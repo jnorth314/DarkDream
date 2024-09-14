@@ -1,6 +1,7 @@
 from functools import cache
 import json
 import os
+import typing
 
 import cv2
 from PyQt6.QtGui import QIcon, QImage, QPixmap
@@ -26,8 +27,9 @@ def get_maps() -> list[list[list[int]]]:
 
     path_to_maps = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/maps.json")
 
-    with open(path_to_maps, "r") as f:
-        return json.load(f).values()
+    with open(path_to_maps, "r", encoding="utf-8") as f:
+        maps: dict[str, list[list[int]]] = json.load(f)
+        return list(maps.values())
 
 def is_matching_dungeon(dungeon: list[list[int]], map_: list[list[int]]) -> bool:
     """Return whether the discovered portions of a dungeon matches the given map"""
@@ -39,11 +41,11 @@ def is_matching_dungeon(dungeon: list[list[int]], map_: list[list[int]]) -> bool
 class TileButton(QPushButton): # pragma: no cover
     """Button that holds Tile information"""
 
-    def __init__(self, x: int, y: int, id_: int):
+    def __init__(self, x: int, y: int, id_: int) -> None:
         super().__init__()
 
-        self.x = x
-        self.y = y
+        self.x_ = x
+        self.y_ = y
 
         self.id = id_
 
@@ -65,7 +67,7 @@ class TileButton(QPushButton): # pragma: no cover
 class DungeonFrame(QFrame): # pragma: no cover
     """Frame to hold dungeon information"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.buttons = [[TileButton(x, y, -1) for x in range(15)] for y in range(15)]
@@ -84,7 +86,7 @@ class DungeonFrame(QFrame): # pragma: no cover
 class TileFrame(QFrame): # pragma: no cover
     """Frame to hold tile information from the tileset"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.buttons = [[TileButton(x, y, 8*y + x) for x in range(8)] for y in range(6)]
@@ -102,7 +104,7 @@ class TileFrame(QFrame): # pragma: no cover
 class CompareWidget(QWidget): # pragma: no cover
     """Widget to handle doing comparisons from user input to the maps"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.setWindowTitle("DarkDream")
@@ -135,7 +137,8 @@ class CompareWidget(QWidget): # pragma: no cover
 
         return None
 
-    def on_tile_toggle(self):
+    @typing.no_type_check
+    def on_tile_toggle(self) -> None:
         """Callback for when a dungeon tile is selected"""
 
         for x in range(15):
@@ -144,7 +147,8 @@ class CompareWidget(QWidget): # pragma: no cover
 
         self.sender().setChecked(True)
 
-    def on_tile_set(self):
+    @typing.no_type_check
+    def on_tile_set(self) -> None:
         """Callback for when a tile from the set is selected"""
 
         tile = self.get_checked_tile()
@@ -164,4 +168,3 @@ class CompareWidget(QWidget): # pragma: no cover
                 for y in range(15):
                     self.dungeon.buttons[y][x].id = map_[y][x]
                     self.dungeon.buttons[y][x].set_icon()
-

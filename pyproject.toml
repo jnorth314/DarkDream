@@ -9,3 +9,6 @@ extension-pkg-whitelist = "PyQt6"
 
 [tool.pylint.'MESSAGES CONTROL']
 disable = ["missing-module-docstring"]
+
+[tool.pylint.'TYPECHECK']
+generated-members = "cv2.*"
