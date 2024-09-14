@@ -4,8 +4,9 @@ import os
 import typing
 
 import cv2
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon, QImage, QPixmap
-from PyQt6.QtWidgets import QFrame, QHBoxLayout, QGridLayout, QPushButton, QWidget
+from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QGridLayout, QPushButton, QWidget, QVBoxLayout
 
 @cache
 def get_tiles() -> list[cv2.typing.MatLike]:
@@ -63,6 +64,8 @@ class TileButton(QPushButton): # pragma: no cover
             icon = QIcon(pixmap)
 
             self.setIcon(icon)
+        else:
+            self.setIcon(QIcon())
 
 class DungeonFrame(QFrame): # pragma: no cover
     """Frame to hold dungeon information"""
@@ -120,12 +123,29 @@ class CompareWidget(QWidget): # pragma: no cover
             for y in range(6):
                 self.tiles.buttons[y][x].clicked.connect(self.on_tile_set)
 
-        row = QHBoxLayout()
+        button = QPushButton()
+        button.setText("Reset")
+        button.clicked.connect(self.on_reset)
+        button.setMinimumWidth(self.dungeon.minimumWidth())
 
-        row.addWidget(self.dungeon)
-        row.addWidget(self.tiles)
+        self.label = QLabel()
+        self.label.setText("21475/21475 Matches")
+        self.label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.label.setMinimumWidth(self.tiles.minimumWidth())
 
-        self.setLayout(row)
+        column = QVBoxLayout()
+
+        row1 = QHBoxLayout()
+        row1.addWidget(self.dungeon)
+        row1.addWidget(self.tiles)
+
+        row2 = QHBoxLayout()
+        row2.addWidget(button)
+        row2.addWidget(self.label)
+
+        column.addLayout(row1)
+        column.addLayout(row2)
+        self.setLayout(column)
 
     def get_checked_tile(self) -> TileButton | None:
         """Get the currently checked tile of the dungeon map"""
@@ -161,6 +181,8 @@ class CompareWidget(QWidget): # pragma: no cover
 
         matching_dungeons = [map_ for map_ in get_maps() if is_matching_dungeon(dungeon, map_)]
 
+        self.label.setText(f"{len(matching_dungeons)}/21475 Matches")
+
         if len(matching_dungeons) == 1:
             map_ = matching_dungeons[0]
 
@@ -168,3 +190,13 @@ class CompareWidget(QWidget): # pragma: no cover
                 for y in range(15):
                     self.dungeon.buttons[y][x].id = map_[y][x]
                     self.dungeon.buttons[y][x].set_icon()
+
+    def on_reset(self) -> None:
+        """Callback for when the reset button is clicked"""
+
+        for x in range(15):
+            for y in range(15):
+                self.dungeon.buttons[y][x].id = -1
+                self.dungeon.buttons[y][x].set_icon()
+
+        self.label.setText("21475/21475 Matches")
