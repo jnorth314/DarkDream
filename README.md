@@ -4,7 +4,7 @@ A Python tool to predict dungeon generation in the PS2 title "Dark Cloud".
 
 ## How does it work?
 
-Before generating a dungeon the game runs the following code: `srand(rand()/100000.0f);`. Since `RAND_MAX` is 2<sup>32</sup> - 1, this dramatically limits the seed count from 2<sup>64</sup> to `RAND_MAX` / 100000 + 1 (i.e. 21475).
+Before generating a dungeon the game runs the following code: `srand(rand()/100000.0f);`. Since `RAND_MAX` is 2<sup>31</sup> - 1, this dramatically limits the seed count from 2<sup>32</sup> to `RAND_MAX` / 100000 + 1 (i.e. 21475).
 
 With that information in mind, the search space becomes reasonable to brute force and generate all of the maps by "hand" without the need to reverse engineer the dungeon generation algorithm. These maps are generated and stored internally in a 20x20 grid for display on the minimap. However, the true dungeon size remains in a 15x15 subsection of this grid as seen below.
 
