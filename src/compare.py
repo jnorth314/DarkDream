@@ -112,6 +112,9 @@ class CompareWidget(QWidget): # pragma: no cover
 
         self.setWindowTitle("DarkDream")
 
+        path_to_icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/icon.ico")
+        self.setWindowIcon(QIcon(path_to_icon))
+
         self.dungeon = DungeonFrame()
         self.tiles = TileFrame()
 

@@ -26,3 +26,7 @@ Through the use of [scripting](./tools/generate_dungeons.py), all 21475 maps can
 2. Atla contents has the ability to be randomized upon entering the floor of a dungeon. Some instances of atla are fixed in what they may produce in order to allow story progress before certain floors. However, there remains other atla which the contents of are rolled when you enter the floor based on previously obtained georama. This is to prevent the player from obtaining duplicates in these sections. For instance, on floors 3 and 5 of Divine Beast Cavern, all 8 atla are randomly generated and may produce different results even if the starting seed to generate the dungeon is the same. This is because the atla obtained from floor 3 will affect the results of floor 5. Currently, the tool does not allow you to predict which atla will be available on the floor.
 
 3. Treasure chests and status circles are randomized directly following the randomization of the dungeon. This means that the contents and their locations would be fixed for every seed. This is important because of the key items locking doors that the player needs access to. The program in the current state does not use these locations as a way to determine which map is being used, nor does it allow for determining the contents of the chests.
+
+## Thanks
+
+- Google's [Noto Emoji](https://github.com/googlefonts/noto-emoji) for the application's icon.
