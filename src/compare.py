@@ -84,6 +84,7 @@ class DungeonFrame(QFrame): # pragma: no cover
 
         layout = QGridLayout()
         layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         for x in range(15):
             for y in range(15):
@@ -91,7 +92,7 @@ class DungeonFrame(QFrame): # pragma: no cover
                 layout.addWidget(self.buttons[y][x], y, x)
 
         self.setLayout(layout)
-        self.setFixedSize(18*15, 18*15)
+        self.setFixedSize(16*15, 16*15)
 
 class TileFrame(QFrame): # pragma: no cover
     """Frame to hold tile information from the tileset"""
@@ -103,13 +104,14 @@ class TileFrame(QFrame): # pragma: no cover
 
         layout = QGridLayout()
         layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         for x in range(8):
             for y in range(6):
                 layout.addWidget(self.buttons[y][x], y, x)
 
         self.setLayout(layout)
-        self.setFixedSize(18*8, 18*6)
+        self.setFixedSize(16*8, 16*6)
 
 class CompareWidget(QWidget): # pragma: no cover
     """Widget to handle doing comparisons from user input to the maps"""
