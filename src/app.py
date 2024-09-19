@@ -3,8 +3,9 @@ import sys
 import typing
 
 from pygrabber.dshow_graph import FilterGraph
+from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QAction, QActionGroup, QIcon
-from PyQt6.QtWidgets import QMainWindow, QMenu, QMenuBar
+from PyQt6.QtWidgets import QGridLayout, QMainWindow, QMenu, QMenuBar, QWidget
 
 from capture import CaptureWidget
 from compare import CompareWidget
@@ -39,17 +40,31 @@ class DarkDream(QMainWindow): # pragma: no cover
             self.group.addAction(action)
 
         view: QMenu = menu.addMenu("View") # type: ignore
+
         self.toggle_action = QAction("Capture Overlay")
         self.toggle_action.setCheckable(True)
         self.toggle_action.triggered.connect(self.on_toggle_capture)
         view.addAction(self.toggle_action)
 
+        self.settings_action = QAction("Settings")
+        self.settings_action.setCheckable(True)
+        self.settings_action.triggered.connect(self.on_view_settings)
+        view.addAction(self.settings_action)
+
         self.setMenuBar(menu)
 
         compare = CompareWidget()
-        self.setCentralWidget(compare)
-
         self.capture = CaptureWidget(compare.dungeon)
+
+        widget = QWidget()
+
+        layout = QGridLayout()
+        layout.addWidget(compare, 0, 0)
+        layout.addWidget(self.capture, 0, 1)
+
+        widget.setLayout(layout)
+
+        self.setCentralWidget(widget)
 
     @typing.no_type_check
     def on_select_capture(self) -> None:
@@ -72,3 +87,12 @@ class DarkDream(QMainWindow): # pragma: no cover
             self.capture.label.show()
         else:
             self.capture.label.hide()
+
+    def on_view_settings(self) -> None:
+        """Callback for when the settings view is toggled"""
+
+        if self.settings_action.isChecked():
+            self.capture.show()
+        else:
+            self.capture.hide()
+            QTimer.singleShot(0, lambda : self.adjustSize())
