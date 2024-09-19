@@ -1,9 +1,12 @@
 import os
 import sys
+import typing
 
-from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QMainWindow
+from pygrabber.dshow_graph import FilterGraph
+from PyQt6.QtGui import QAction, QActionGroup, QIcon
+from PyQt6.QtWidgets import QMainWindow, QMenu, QMenuBar
 
+from capture import CaptureWidget
 from compare import CompareWidget
 
 class DarkDream(QMainWindow): # pragma: no cover
@@ -20,5 +23,52 @@ class DarkDream(QMainWindow): # pragma: no cover
         )
         self.setWindowIcon(QIcon(path_to_icon))
 
+        menu = QMenuBar()
+
+        file = menu.addMenu("File")
+        captures: QMenu = file.addMenu("Select Capture") # type: ignore
+
+        self.group = QActionGroup(captures)
+        self.group.setExclusive(True)
+
+        for device in FilterGraph().get_input_devices(): # type: ignore
+            action = QAction(device)
+            action.setCheckable(True)
+            action.triggered.connect(self.on_select_capture)
+            captures.addAction(action)
+            self.group.addAction(action)
+
+        view: QMenu = menu.addMenu("View") # type: ignore
+        self.toggle_action = QAction("Capture Overlay")
+        self.toggle_action.setCheckable(True)
+        self.toggle_action.triggered.connect(self.on_toggle_capture)
+        view.addAction(self.toggle_action)
+
+        self.setMenuBar(menu)
+
         compare = CompareWidget()
         self.setCentralWidget(compare)
+
+        self.capture = CaptureWidget(compare.dungeon)
+
+    @typing.no_type_check
+    def on_select_capture(self) -> None:
+        """Callback for when the select capture button in the menu is pressed"""
+
+        action: QAction = self.sender()
+
+        for i, device in enumerate(FilterGraph().get_input_devices()):
+            if device == action.text():
+                filter_graph = FilterGraph()
+                filter_graph.add_video_input_device(i)
+                width, height = filter_graph.get_input_device().get_current_format()
+                self.capture.set_video_capture(i, width, height)
+                break
+
+    def on_toggle_capture(self) -> None:
+        """Callback for when the capture is toggled for display"""
+
+        if self.toggle_action.isChecked():
+            self.capture.label.show()
+        else:
+            self.capture.label.hide()
