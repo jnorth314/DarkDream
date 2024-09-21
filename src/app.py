@@ -95,4 +95,4 @@ class DarkDream(QMainWindow): # pragma: no cover
             self.capture.show()
         else:
             self.capture.hide()
-            QTimer.singleShot(0, lambda : self.adjustSize())
+            QTimer.singleShot(0, self.adjustSize)

@@ -77,8 +77,8 @@ class TileButton(QPushButton): # pragma: no cover
 class DungeonFrame(QFrame): # pragma: no cover
     """Frame to hold dungeon information"""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, parent: QWidget) -> None:
+        super().__init__(parent=parent)
 
         self.buttons = [[TileButton(x, y, -1) for x in range(15)] for y in range(15)]
 
@@ -97,8 +97,8 @@ class DungeonFrame(QFrame): # pragma: no cover
 class TileFrame(QFrame): # pragma: no cover
     """Frame to hold tile information from the tileset"""
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, parent: QWidget) -> None:
+        super().__init__(parent=parent)
 
         self.buttons = [[TileButton(x, y, 8*y + x) for x in range(8)] for y in range(6)]
 
@@ -119,8 +119,8 @@ class CompareWidget(QWidget): # pragma: no cover
     def __init__(self) -> None:
         super().__init__()
 
-        self.dungeon = DungeonFrame()
-        self.tiles = TileFrame()
+        self.dungeon = DungeonFrame(self)
+        self.tiles = TileFrame(self)
 
         for x in range(15):
             for y in range(15):
@@ -184,6 +184,21 @@ class CompareWidget(QWidget): # pragma: no cover
             tile.id = self.sender().id
             tile.set_icon()
 
+        self.check_matching_dungeon()
+
+    def on_reset(self) -> None:
+        """Callback for when the reset button is clicked"""
+
+        for x in range(15):
+            for y in range(15):
+                self.dungeon.buttons[y][x].id = -1
+                self.dungeon.buttons[y][x].set_icon()
+
+        self.label.setText("21475/21475 Matches")
+
+    def check_matching_dungeon(self) -> None:
+        """Check if the dungeon is a match and set the rest of the tiles if so"""
+
         dungeon = [[self.dungeon.buttons[y][x].id for x in range(15)] for y in range(15)]
 
         matching_dungeons = [map_ for map_ in get_maps() if is_matching_dungeon(dungeon, map_)]
@@ -197,13 +212,3 @@ class CompareWidget(QWidget): # pragma: no cover
                 for y in range(15):
                     self.dungeon.buttons[y][x].id = map_[y][x]
                     self.dungeon.buttons[y][x].set_icon()
-
-    def on_reset(self) -> None:
-        """Callback for when the reset button is clicked"""
-
-        for x in range(15):
-            for y in range(15):
-                self.dungeon.buttons[y][x].id = -1
-                self.dungeon.buttons[y][x].set_icon()
-
-        self.label.setText("21475/21475 Matches")
