@@ -3,7 +3,7 @@ from functools import cache
 import cv2
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QImage, QPixmap
-from PyQt6.QtWidgets import QSpinBox, QFrame, QGridLayout, QLabel, QHBoxLayout, QWidget
+from PyQt6.QtWidgets import QCheckBox, QSpinBox, QFrame, QGridLayout, QLabel, QHBoxLayout, QWidget
 
 from compare import CompareWidget, DungeonFrame, get_tiles
 
@@ -44,33 +44,39 @@ class SettingsFrame(QFrame):
 
         layout = QGridLayout()
 
+        self.automate = QCheckBox()
+        layout.addWidget(self.automate, 0, 0, 1, 1)
+        label = QLabel()
+        label.setText("Automate")
+        layout.addWidget(label, 0, 1, 1, 3)
+
         label = QLabel()
         label.setText("X")
-        layout.addWidget(label, 0, 0)
+        layout.addWidget(label, 1, 0, 1, 2)
         self.x_ = QSpinBox()
         self.x_.setRange(0, 0)
-        layout.addWidget(self.x_, 1, 0)
+        layout.addWidget(self.x_, 2, 0, 1, 2)
 
         label = QLabel()
         label.setText("Y")
-        layout.addWidget(label, 0, 1)
+        layout.addWidget(label, 1, 2, 1, 2)
         self.y_ = QSpinBox()
         self.y_.setRange(0, 0)
-        layout.addWidget(self.y_, 1, 1)
+        layout.addWidget(self.y_, 2, 2, 1, 2)
 
         label = QLabel()
         label.setText("Width")
-        layout.addWidget(label, 2, 0)
+        layout.addWidget(label, 3, 0, 1, 2)
         self.width_ = QSpinBox()
         self.width_.setRange(0, 0)
-        layout.addWidget(self.width_, 3, 0)
+        layout.addWidget(self.width_, 4, 0, 1, 2)
 
         label = QLabel()
         label.setText("Height")
-        layout.addWidget(label, 2, 1)
+        layout.addWidget(label, 3, 2, 1, 2)
         self.height_ = QSpinBox()
         self.height_.setRange(0, 0)
-        layout.addWidget(self.height_, 3, 1)
+        layout.addWidget(self.height_, 4, 2, 1, 2)
 
         layout.setSpacing(0)
         self.setLayout(layout)
@@ -122,6 +128,21 @@ class CaptureWidget(QWidget):
         else:
             frame = crop_to_dungeon(frame, 0, 0, min(height, width), min(height, width))
 
+        if self.settings.automate.isChecked():
+            self.compare_dungeon(frame)
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+        frame[...,3] = 127
+
+        height, width, channels = frame.shape
+
+        pixmap = QPixmap(QImage(frame.tobytes(), width, height, width*channels, QImage.Format.Format_RGBA8888))
+        self.label.resize(pixmap.size())
+        self.label.setPixmap(pixmap)
+
+    def compare_dungeon(self, frame: cv2.typing.MatLike) -> None:
+        """Compare the dungeon to the current grid of tiles"""
+
         dungeon = get_dungeon_from_image(frame)
         has_made_change = False
         dungeon_frame: DungeonFrame = self.label.parent() # type: ignore
@@ -136,15 +157,6 @@ class CaptureWidget(QWidget):
         if has_made_change:
             compare_widget: CompareWidget = dungeon_frame.parent() # type: ignore
             compare_widget.check_matching_dungeon()
-
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-        frame[...,3] = 127
-
-        height, width, channels = frame.shape
-
-        pixmap = QPixmap(QImage(frame.tobytes(), width, height, width*channels, QImage.Format.Format_RGBA8888))
-        self.label.resize(pixmap.size())
-        self.label.setPixmap(pixmap)
 
     def set_video_capture(self, index: int, width: int, height: int) -> None:
         """Create a video capture"""
