@@ -4,6 +4,7 @@ A Python tool to predict dungeon generation in the PS2 title "Dark Cloud".
 
 ## How does it work?
 
+### The Basics
 Before generating a dungeon the game runs the following code: `srand(rand()/100000.0f);`. Since `RAND_MAX` is 2<sup>31</sup> - 1, this dramatically limits the seed count from 2<sup>32</sup> to `RAND_MAX` / 100000 + 1 (i.e. 21475).
 
 With that information in mind, the search space becomes reasonable to brute force and generate all of the maps by "hand" without the need to reverse engineer the dungeon generation algorithm. These maps are generated and stored internally in a 20x20 grid for display on the minimap. However, the true dungeon size remains in a 15x15 subsection of this grid as seen below.
@@ -17,6 +18,14 @@ Through the use of [scripting](./tools/generate_dungeons.py), all 21475 maps can
 
 <p align="center">
   <img src="res/example_generated_maps.png" title="Generated Minimaps">
+</p>
+
+### Image Recognition
+
+By capturing the game feed and cropping to the selection of the map, the dungeon can automatically be determined using the tileset. This is done by precomputing the entire tileset's [phash](https://en.wikipedia.org/wiki/Perceptual_hashing). Every frame the app will compare each tile's hash to the precomputed hash. If this hash gives a similarity greater than a threshold then that tile is determined to be a match.
+
+<p align="center">
+  <img src="res/example_recognition.png" title="Image Recognition">
 </p>
 
 ## Known Issues
