@@ -10,14 +10,14 @@ Before generating a dungeon the game runs the following code: `srand(rand()/1000
 With that information in mind, the search space becomes reasonable to brute force and generate all of the maps by "hand" without the need to reverse engineer the dungeon generation algorithm. These maps are generated and stored internally in a 20x20 grid for display on the minimap. However, the true dungeon size remains in a 15x15 subsection of this grid as seen below.
 
 <p align="center">
-  <img src="res/example_map.png" title="Map of Seed 00000000" height=240>
-  <img src="res/example_tiles.png" title="Map Tiles" height=240>
+  <img src="docs/example_map.png" title="Map of Seed 00000000" height=240>
+  <img src="docs/example_tiles.png" title="Map Tiles" height=240>
 </p>
 
 Through the use of [scripting](./tools/generate_dungeons.py), all 21475 maps can be precomputed in less than 24 hours. With the above tileset and the information from the [precomputed file](./res/maps.json) any dungeon can be rendered into an image like the following dungeons.
 
 <p align="center">
-  <img src="res/example_generated_maps.png" title="Generated Minimaps">
+  <img src="docs/example_generated_maps.png" title="Generated Minimaps">
 </p>
 
 ### Image Recognition
@@ -25,8 +25,12 @@ Through the use of [scripting](./tools/generate_dungeons.py), all 21475 maps can
 By capturing the game feed and cropping to the selection of the map, the dungeon can automatically be determined using the tileset. This is done by precomputing the entire tileset's [phash](https://en.wikipedia.org/wiki/Perceptual_hashing). Every frame the app will compare each tile's hash to the precomputed hash. If this hash gives a similarity greater than a threshold then that tile is determined to be a match.
 
 <p align="center">
-  <img src="res/example_recognition.png" title="Image Recognition">
+  <img src="docs/example_recognition.png" title="Image Recognition">
 </p>
+
+## How to use!
+
+Check out the tutorial located [here](docs/TUTORIAL.md)!
 
 ## Known Issues
 
