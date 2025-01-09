@@ -1,6 +1,6 @@
 # DarkDream
 
-A Python tool to predict dungeon generation in the PS2 title "Dark Cloud".
+A tool to predict dungeon generation in the PS2 title "Dark Cloud".
 
 ## How does it work?
 
