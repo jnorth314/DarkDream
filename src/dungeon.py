@@ -1,5 +1,6 @@
 from dataclasses import astuple, dataclass
 import os
+import re
 import sqlite3
 from typing import Callable
 
@@ -47,6 +48,30 @@ def convert_dungeon_to_string(dungeon: Dungeon) -> str:
 
     return "".join(get_hex_from_tile(dungeon[y][x]) for y in range(15) for x in range(15))
 
+def convert_dungeon_to_regex(dungeon: Dungeon) -> str:
+    """Convert the dungeon into a regex string for matching"""
+
+    WILDCARDS = {DungeonTile(0xFFFFFFFF, 0)}
+
+    regex = ""
+    consecutive_wildcards = 0
+
+    for y in range(15):
+        for x in range(15):
+            if dungeon[y][x] in WILDCARDS:
+                consecutive_wildcards += 1
+            else:
+                if consecutive_wildcards > 0:
+                    regex += f"(..){{{consecutive_wildcards}}}"
+                    consecutive_wildcards = 0
+
+                regex += get_hex_from_tile(dungeon[y][x])
+
+    if consecutive_wildcards > 0:
+        regex += f"(..){{{consecutive_wildcards}}}"
+
+    return regex
+
 def convert_string_to_dungeon(dungeon: str) -> Dungeon:
     """Convert the hex string into a dungeon"""
 
@@ -79,25 +104,18 @@ def create_dungeon_entry(seed: int, dungeon: str) -> None:
         )
         connection.commit()
 
-def get_matching_dungeons(dungeon: Dungeon) -> list[Dungeon]:
-    """Get a list of matching dungeons"""
+def get_matching_dungeons(dungeon: Dungeon) -> list[str]:
+    """Get a list of matching dungeon strings"""
 
-    #TODO: RegEx on sqlite3 query?
-
-    dungeons:  list[Dungeon] = []
-    wildcards = {DungeonTile(0xFFFFFFFF, 0)}
+    dungeons:  list[str] = []
 
     with sqlite3.connect(DATABASE_PATH) as connection:
-        cursor = connection.cursor()
+        connection.create_function("REGEXP", 2, lambda pattern, string : re.search(pattern, string) is not None)
 
-        cursor.execute("SELECT * FROM dungeons")
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT * FROM dungeons WHERE layout REGEXP \"{convert_dungeon_to_regex(dungeon)}\"")
 
         for _, layout in cursor:
-            minimap = convert_string_to_dungeon(layout)
-
-            if all(dungeon[y][x] in wildcards or dungeon[y][x] == minimap[y][x]
-                   for x in range(15)
-                   for y in range(15)):
-                dungeons.append(minimap)
+            dungeons.append(layout)
 
     return dungeons
