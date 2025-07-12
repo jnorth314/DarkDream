@@ -18,6 +18,21 @@ class DungeonEntry:
     seed: int
     layout: str
 
+USED_DUNGEON_TILES = { # Precomputed from DUNGEONS.db
+    DungeonTile(0xFFFFFFFF, 0),
+    DungeonTile(0x00, 0), DungeonTile(0x00, 1), DungeonTile(0x01, 0), DungeonTile(0x01, 1),
+    DungeonTile(0x01, 2), DungeonTile(0x01, 3), DungeonTile(0x02, 0), DungeonTile(0x03, 0),
+    DungeonTile(0x03, 1), DungeonTile(0x03, 2), DungeonTile(0x03, 3), DungeonTile(0x05, 0),
+    DungeonTile(0x06, 0), DungeonTile(0x07, 0), DungeonTile(0x08, 0), DungeonTile(0x09, 0),
+    DungeonTile(0x0A, 0), DungeonTile(0x0B, 0), DungeonTile(0x0C, 0), DungeonTile(0x0D, 0),
+    DungeonTile(0x0E, 0), DungeonTile(0x0F, 0), DungeonTile(0x10, 0), DungeonTile(0x11, 0),
+    DungeonTile(0x12, 0), DungeonTile(0x13, 0), DungeonTile(0x14, 0), DungeonTile(0x15, 0),
+    DungeonTile(0x16, 0), DungeonTile(0x17, 0), DungeonTile(0x1A, 0), DungeonTile(0x1B, 0),
+    DungeonTile(0x1E, 0), DungeonTile(0x1F, 2), DungeonTile(0x20, 0), DungeonTile(0x24, 0),
+    DungeonTile(0x25, 0), DungeonTile(0x26, 0), DungeonTile(0x27, 0), DungeonTile(0x28, 0),
+    DungeonTile(0x2D, 0), DungeonTile(0x2E, 0)
+}
+
 def get_hex_from_tile(tile: DungeonTile) -> str:
     """Convert the tile into a hex string"""
 

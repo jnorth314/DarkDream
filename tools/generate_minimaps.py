@@ -4,7 +4,7 @@ import sqlite3
 
 import cv2
 
-from dungeon import convert_string_to_dungeon, DATABASE_PATH, Dungeon, DungeonTile
+from dungeon import convert_string_to_dungeon, DATABASE_PATH, Dungeon, DungeonTile, USED_DUNGEON_TILES
 
 TILES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/tiles.png")
 
@@ -103,7 +103,14 @@ def main() -> None:
 
     PATH_TO_SCREENSHOTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/screenshots")
 
-    os.mkdir(PATH_TO_SCREENSHOTS)
+    if not os.path.exists(PATH_TO_SCREENSHOTS):
+        os.mkdir(PATH_TO_SCREENSHOTS)
+
+    cv2.imwrite(
+        f"{PATH_TO_SCREENSHOTS}/example_tiles.png",
+        cv2.hconcat([get_tile_image(tile)
+                     for tile in sorted(USED_DUNGEON_TILES, key=lambda t: (((t.id_ + 1) & 0xFF) << 2) + t.rotation)])
+    )
 
     with sqlite3.connect(DATABASE_PATH) as connection:
         cursor = connection.cursor()
