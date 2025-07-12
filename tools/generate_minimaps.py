@@ -1,12 +1,9 @@
-from functools import cache
 import os
 import sqlite3
 
 import cv2
 
-from dungeon import convert_string_to_dungeon, DATABASE_PATH, Dungeon, DungeonTile, USED_DUNGEON_TILES
-
-TILES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/tiles.png")
+from dungeon import convert_string_to_dungeon, DATABASE_PATH, Dungeon, DungeonTile, get_tile_image, USED_DUNGEON_TILES
 
 def get_tile_ascii(tile: DungeonTile) -> str:
     """Return the ASCII equivalent to the tile"""
@@ -66,17 +63,6 @@ def get_tile_ascii(tile: DungeonTile) -> str:
         raise ValueError(f"Invalid Tile Data ({tile.id_}, {tile.rotation})")
 
     return TILES_TO_ASCII[tile.id_][tile.rotation]
-
-@cache
-def get_tile_image(tile: DungeonTile) -> cv2.typing.MatLike:
-    """Get the texture of the tile in the tile sheet"""
-
-    if tile.id_ == 0xFFFFFFFF:
-        x, y = 0, 0
-    else:
-        x, y = 16*tile.rotation, 16*(tile.id_ + 1)
-
-    return cv2.imread(TILES_PATH)[y:y + 16, x:x + 16]
 
 def display_dungeon_map(dungeon: Dungeon) -> None:
     """Print the dungeon to the console"""

@@ -1,10 +1,14 @@
 from dataclasses import astuple, dataclass
+from functools import cache
 import os
 import re
 import sqlite3
 from typing import Callable
 
+import cv2
+
 DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/DUNGEONS.db")
+TILES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/tiles.png")
 
 @dataclass(unsafe_hash=True)
 class DungeonTile:
@@ -18,7 +22,7 @@ class DungeonEntry:
     seed: int
     layout: str
 
-USED_DUNGEON_TILES = { # Precomputed from DUNGEONS.db
+USED_DUNGEON_TILES = [ # Precomputed from DUNGEONS.db
     DungeonTile(0xFFFFFFFF, 0),
     DungeonTile(0x00, 0), DungeonTile(0x00, 1), DungeonTile(0x01, 0), DungeonTile(0x01, 1),
     DungeonTile(0x01, 2), DungeonTile(0x01, 3), DungeonTile(0x02, 0), DungeonTile(0x03, 0),
@@ -31,7 +35,7 @@ USED_DUNGEON_TILES = { # Precomputed from DUNGEONS.db
     DungeonTile(0x1E, 0), DungeonTile(0x1F, 2), DungeonTile(0x20, 0), DungeonTile(0x24, 0),
     DungeonTile(0x25, 0), DungeonTile(0x26, 0), DungeonTile(0x27, 0), DungeonTile(0x28, 0),
     DungeonTile(0x2D, 0), DungeonTile(0x2E, 0)
-}
+]
 
 def get_hex_from_tile(tile: DungeonTile) -> str:
     """Convert the tile into a hex string"""
@@ -134,3 +138,14 @@ def get_matching_dungeons(dungeon: Dungeon) -> list[str]:
             dungeons.append(layout)
 
     return dungeons
+
+@cache
+def get_tile_image(tile: DungeonTile) -> cv2.typing.MatLike:
+    """Get the texture of the tile in the tile sheet"""
+
+    if tile.id_ == 0xFFFFFFFF:
+        x, y = 0, 0
+    else:
+        x, y = 16*tile.rotation, 16*(tile.id_ + 1)
+
+    return cv2.imread(TILES_PATH)[y:y + 16, x:x + 16]
