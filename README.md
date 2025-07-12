@@ -13,11 +13,11 @@ With that information in mind, the search space becomes reasonable to brute forc
   <img src="docs/example_map.png" title="In-game Minimap">
 </p>
 
-Through the use of [scripting](./tools/generate_dungeons.py), all 21475 maps can be precomputed in less than 4 hours. With the above tileset and the information from the [precomputed file](./res/DUNGEONS.db) any dungeon can be rendered into an image like the following dungeons.
+Through the use of [scripting](./tools/generate_dungeons.py), all 21475 maps can be precomputed in less than 4 hours. With the tileset below and the information from the [precomputed file](./res/DUNGEONS.db) any dungeon can be rendered into an image like the following dungeons.
 
 <p align="center">
-  <img src="docs/example_generated_maps.png" title="Generated Minimaps">
   <img src="docs/example_tiles.png" title="Map Tile Set">
+  <img src="docs/example_generated_maps.png" title="Generated Minimaps">
 </p>
 
 ## Known Issues
