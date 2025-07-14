@@ -1,6 +1,7 @@
 import os
 import sys
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon, QImage, QPixmap
 from PyQt6.QtWidgets import QApplication, QFrame, QGridLayout, QLabel, QMainWindow, QPushButton, QWidget
 
@@ -106,6 +107,30 @@ class TileSelectorFrame(QFrame):
         self.setLayout(layout)
         self.setFixedSize(16*layout.columnCount() + 15, 16*layout.rowCount() + 15)
 
+class MatchesFrame(QFrame):
+    """Object to hold the label for the matching statistics"""
+
+    def __init__(self, parent: QWidget | None=None) -> None:
+        super().__init__(parent=parent)
+
+        layout = QGridLayout(self)
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        layout.addWidget(QLabel("Matches:", self), 0, 0, 3, 1)
+        layout.addWidget(QLabel("21475", self), 0, 1, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(label := QFrame(self), 1, 1)
+        layout.addWidget(QLabel("21475", self), 2, 1, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
+
+        label.setFrameShape(QFrame.Shape.HLine)
+
+    def set_matches(self, matches: int) -> None:
+        """Update the label according to the number of matches"""
+
+        layout: QGridLayout = self.layout()
+        label: QLabel = layout.itemAtPosition(0, 1).widget()
+        label.setText(str(matches))
+
 class DungeonCreatorWidget(QWidget):
     """Widget containing all of the elements to craft dungeons"""
 
@@ -115,7 +140,7 @@ class DungeonCreatorWidget(QWidget):
         layout = QGridLayout(self)
         layout.addWidget(DungeonFrame(self), 0, 0, 1, 2)
         layout.addWidget(TileSelectorFrame(self), 1, 0, 2, 1)
-        layout.addWidget(QLabel("Matches: 21475/21475", self), 1, 1, 1, 1)
+        layout.addWidget(MatchesFrame(self), 1, 1, 1, 1)
         layout.addWidget(QPushButton("Reset", self), 2, 1, 1, 1)
         self.setLayout(layout)
 
@@ -172,7 +197,7 @@ class DungeonCreatorWidget(QWidget):
                 button: TileButton = layout.itemAtPosition(y, x).widget()
                 button.tile = DungeonTile(0xFFFFFFFF, 0)
 
-        self.findChild(QLabel).setText("Matches: 21475/21475")
+        self.findChild(MatchesFrame).set_matches(21475)
 
     def check_dungeon(self) -> None:
         """Check if the dungeon was a match, if so fill out the rest of the minimap"""
@@ -180,7 +205,7 @@ class DungeonCreatorWidget(QWidget):
         dungeon = self.findChild(DungeonFrame).get_dungeon()
         matches = get_matching_dungeons(dungeon)
 
-        self.findChild(QLabel).setText(f"Matches: {len(matches)}/21475")
+        self.findChild(MatchesFrame).set_matches(len(matches))
 
         if len(matches) == 1:
             dungeon = convert_string_to_dungeon(matches[0])
