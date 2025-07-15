@@ -1,6 +1,7 @@
 import os
 import sys
 
+import cv2
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon, QImage, QPixmap
 from PyQt6.QtWidgets import QApplication, QFrame, QGridLayout, QLabel, QMainWindow, QPushButton, QWidget
@@ -59,6 +60,10 @@ class DungeonFrame(QFrame):
 
         self.setLayout(layout)
 
+        label = QLabel(self)
+        label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        label.setFixedSize(16*15, 16*15)
+
     def get_currently_checked_button(self) -> TileButton | None:
         """Go through the grid and return the currently checked button"""
 
@@ -87,6 +92,19 @@ class DungeonFrame(QFrame):
                 dungeon[y][x] = button.tile
 
         return dungeon
+
+    def set_overlay(self, img: cv2.typing.MatLike) -> None:
+        """Apply a transparent image to overlay on top of the DungeonFrame"""
+
+        img = cv2.resize(img, (16*15, 16*15))
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
+        img[..., 3] = 127
+
+        height, width, channels = img.shape
+
+        self.findChild(QLabel).setPixmap(
+            QPixmap(QImage(img.tobytes(), width, height, width*channels, QImage.Format.Format_RGBA8888))
+        )
 
 class TileSelectorFrame(QFrame):
     """Object to hold all of the TileButtons for editing the DungeonFrame"""
