@@ -1,8 +1,9 @@
 import os
 import sys
+import time
 
 import cv2
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import pyqtSignal, QObject, Qt, QThread
 from PyQt6.QtGui import QIcon, QImage, QPixmap
 from PyQt6.QtWidgets import QApplication, QFrame, QGridLayout, QLabel, QMainWindow, QPushButton, QWidget
 
@@ -11,6 +12,43 @@ from dungeon import (
 )
 
 ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/icon.ico")
+
+class VideoCapture(QThread):
+    """Worker responsible for capturing the image"""
+
+    capture = pyqtSignal(object)
+    closed = pyqtSignal()
+
+    def __init__(self, idx: int, width: int, height: int, parent: QObject | None=None) -> None:
+        super().__init__(parent=parent)
+
+        self.is_running = False
+        self.video = cv2.VideoCapture(idx)
+        self.video.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+
+    def run(self) -> None:
+        """Thread where the capture image will be read"""
+
+        self.is_running = True
+
+        while self.is_running and self.video.isOpened():
+            is_success, img = self.video.read()
+
+            if is_success:
+                self.capture.emit(img)
+
+            time.sleep(1/30)
+
+        if self.video.isOpened():
+            self.video.release()
+
+        self.closed.emit()
+
+    def stop(self) -> None:
+        """Stop the worker from running"""
+
+        self.is_running = False
 
 class TileButton(QPushButton):
     """Button to hold tile information"""
@@ -216,6 +254,11 @@ class DungeonCreatorWidget(QWidget):
                 button.tile = DungeonTile(0xFFFFFFFF, 0)
 
         self.findChild(MatchesFrame).set_matches(21475)
+
+    def on_image(self, img: cv2.typing.MatLike) -> None:
+        """Callback for when the image is captured"""
+
+        self.findChild(DungeonFrame).set_overlay(img)
 
     def check_dungeon(self) -> None:
         """Check if the dungeon was a match, if so fill out the rest of the minimap"""
