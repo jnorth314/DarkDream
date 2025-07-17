@@ -22,7 +22,6 @@ class VideoCapture(QThread):
     def __init__(self, idx: int, width: int, height: int, parent: QObject | None=None) -> None:
         super().__init__(parent=parent)
 
-        self.is_running = False
         self.video = cv2.VideoCapture(idx)
         self.video.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
@@ -30,9 +29,7 @@ class VideoCapture(QThread):
     def run(self) -> None:
         """Thread where the capture image will be read"""
 
-        self.is_running = True
-
-        while self.is_running and self.video.isOpened():
+        while not self.isInterruptionRequested() and self.video.isOpened():
             is_success, img = self.video.read()
 
             if is_success:
@@ -44,11 +41,6 @@ class VideoCapture(QThread):
             self.video.release()
 
         self.closed.emit()
-
-    def stop(self) -> None:
-        """Stop the worker from running"""
-
-        self.is_running = False
 
 class TileButton(QPushButton):
     """Button to hold tile information"""
