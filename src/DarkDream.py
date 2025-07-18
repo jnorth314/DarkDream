@@ -170,6 +170,8 @@ class MatchesFrame(QFrame):
         layout.addWidget(label := QFrame(self), 1, 1)
         layout.addWidget(QLabel("21475", self), 2, 1, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
 
+        self.setLayout(layout)
+
         label.setFrameShape(QFrame.Shape.HLine)
 
     def set_matches(self, matches: int) -> None:
