@@ -4,7 +4,7 @@ import time
 
 import cv2
 from PyQt6.QtCore import pyqtSignal, QObject, Qt, QThread
-from PyQt6.QtGui import QIcon, QImage, QPixmap
+from PyQt6.QtGui import QCloseEvent, QIcon, QImage, QPixmap
 from PyQt6.QtWidgets import QApplication, QFrame, QGridLayout, QLabel, QMainWindow, QPushButton, QWidget
 
 from dungeon import (
@@ -16,15 +16,13 @@ ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/ico
 class VideoCapture(QThread):
     """Worker responsible for capturing the image"""
 
-    capture = pyqtSignal(object)
+    captured = pyqtSignal(object)
     closed = pyqtSignal()
 
-    def __init__(self, idx: int, width: int, height: int, parent: QObject | None=None) -> None:
+    def __init__(self, parent: QObject | None=None) -> None:
         super().__init__(parent=parent)
 
-        self.video = cv2.VideoCapture(idx)
-        self.video.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-        self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        self.video = cv2.VideoCapture()
 
     def run(self) -> None:
         """Thread where the capture image will be read"""
@@ -33,7 +31,7 @@ class VideoCapture(QThread):
             is_success, img = self.video.read()
 
             if is_success:
-                self.capture.emit(img)
+                self.captured.emit(img)
 
             time.sleep(1/30)
 
@@ -41,6 +39,13 @@ class VideoCapture(QThread):
             self.video.release()
 
         self.closed.emit()
+
+    def open(self, idx: int, width: int, height: int) -> None:
+        """Open the video with the corresponding parameters"""
+
+        self.video.open(idx)
+        self.video.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
 class TileButton(QPushButton):
     """Button to hold tile information"""
@@ -284,8 +289,20 @@ class DarkDream(QMainWindow):
         self.setWindowTitle("DarkDream")
         self.setWindowIcon(QIcon(ICON_PATH))
 
-        self.setCentralWidget(DungeonCreatorWidget(self))
+        self.setCentralWidget(widget := DungeonCreatorWidget(self))
         self.setFixedSize(self.minimumSize())
+
+        worker = VideoCapture(self)
+        worker.captured.connect(widget.on_image)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        """Gracefully close the GUI by terminating and waiting for any threads"""
+
+        worker = self.findChild(VideoCapture)
+        worker.requestInterruption()
+        worker.wait()
+
+        event.accept()
 
 def main():
     """Create and run the GUI for DarkDream"""
