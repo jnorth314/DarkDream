@@ -5,7 +5,7 @@ import time
 import cv2
 from PyQt6.QtCore import pyqtSignal, QObject, Qt, QThread
 from PyQt6.QtGui import QCloseEvent, QIcon, QImage, QPixmap
-from PyQt6.QtWidgets import QApplication, QFrame, QGridLayout, QLabel, QMainWindow, QPushButton, QWidget
+from PyQt6.QtWidgets import QApplication, QButtonGroup, QFrame, QGridLayout, QLabel, QMainWindow, QPushButton, QWidget
 
 from dungeon import (
     convert_string_to_dungeon, Dungeon, DungeonTile, get_matching_dungeons, get_tile_image, USED_DUNGEON_TILES
@@ -89,29 +89,19 @@ class DungeonFrame(QFrame):
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0 ,0)
 
+        buttons = QButtonGroup(self)
+        buttons.setExclusive(False)
+
         for y in range(15):
             for x in range(15):
-                layout.addWidget(TileButton(self), y, x)
+                layout.addWidget(button := TileButton(self), y, x)
+                buttons.addButton(button)
 
         self.setLayout(layout)
 
         label = QLabel(self)
         label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         label.setFixedSize(16*15, 16*15)
-
-    def get_currently_checked_button(self) -> TileButton | None:
-        """Go through the grid and return the currently checked button"""
-
-        layout: QGridLayout = self.layout()
-
-        for y in range(15):
-            for x in range(15):
-                button: TileButton = layout.itemAtPosition(y, x).widget()
-
-                if button.isChecked():
-                    return button
-
-        return None
 
     def get_dungeon(self) -> Dungeon:
         """Reassemble the tiles into a Dungeon and return the result"""
@@ -151,11 +141,14 @@ class TileSelectorFrame(QFrame):
         layout.setSpacing(1)
         layout.setContentsMargins(0, 0, 0 ,0)
 
-        for i, tile in enumerate(USED_DUNGEON_TILES[1:]):
-            button = TileButton(self)
-            button.tile = tile
+        buttons = QButtonGroup(self)
 
-            layout.addWidget(button, i//7, i%7) # Largest prime factor is a good choice here to form a rectangle
+        for i, tile in enumerate(USED_DUNGEON_TILES[1:]):
+            # Largest prime factor is a good choice here to form a rectangle
+            layout.addWidget(button := TileButton(self), i//7, i%7)
+            buttons.addButton(button)
+
+            button.tile = tile
 
         self.setLayout(layout)
         self.setFixedSize(16*layout.columnCount() + 15, 16*layout.rowCount() + 15)
@@ -193,53 +186,39 @@ class DungeonCreatorWidget(QWidget):
         super().__init__(parent=parent)
 
         layout = QGridLayout(self)
-        layout.addWidget(DungeonFrame(self), 0, 0, 1, 2)
-        layout.addWidget(TileSelectorFrame(self), 1, 0, 2, 1)
+        layout.addWidget(tiles := DungeonFrame(self), 0, 0, 1, 2)
+        layout.addWidget(images := TileSelectorFrame(self), 1, 0, 2, 1)
         layout.addWidget(MatchesFrame(self), 1, 1, 1, 1)
-        layout.addWidget(QPushButton("Reset", self), 2, 1, 1, 1)
+        layout.addWidget(button := QPushButton("Reset", self), 2, 1, 1, 1)
         self.setLayout(layout)
 
-        tiles: QGridLayout = self.findChild(DungeonFrame).layout()
+        tiles.findChild(QButtonGroup).buttonClicked.connect(self.on_tile_select)
+        images.findChild(QButtonGroup).buttonClicked.connect(self.on_image_select)
+        button.clicked.connect(self.on_reset)
 
-        for y in range(tiles.rowCount()):
-            for x in range(tiles.columnCount()):
-                button: TileButton = tiles.itemAtPosition(y, x).widget()
-                button.clicked.connect(self.on_tile_select)
-
-        selector: QGridLayout = self.findChild(TileSelectorFrame).layout()
-
-        for y in range(selector.rowCount()):
-            for x in range(selector.columnCount()):
-                button: TileButton = selector.itemAtPosition(y, x).widget()
-                button.clicked.connect(self.on_image_select)
-
-        self.findChild(QPushButton).clicked.connect(self.on_reset)
-
-    def on_tile_select(self) -> None:
+    def on_tile_select(self, button: TileButton) -> None:
         """Callback for when a tile is clicked in the DungeonFrame"""
 
-        layout: QGridLayout = self.findChild(DungeonFrame).layout()
-        sender: TileButton = self.sender()
-
-        if not sender.isChecked() and sender.tile != DungeonTile(0xFFFFFFFF, 0): # A double clicked tile should be reset
-            sender.tile = DungeonTile(0xFFFFFFFF, 0)
+        if not button.isChecked() and button.tile != DungeonTile(0xFFFFFFFF, 0): # A double clicked tile should be reset
+            button.tile = DungeonTile(0xFFFFFFFF, 0)
             self.check_dungeon()
 
-        for y in range(15):
-            for x in range(15):
-                button: TileButton = layout.itemAtPosition(y, x).widget()
-                button.setChecked(False)
+        layout: QGridLayout = self.findChild(DungeonFrame).layout()
 
-        sender.setChecked(True)
+        for y in range(layout.rowCount()):
+            for x in range(layout.columnCount()):
+                tile: TileButton = layout.itemAtPosition(y, x).widget()
+                tile.setChecked(False)
 
-    def on_image_select(self) -> None:
+        button.setChecked(True)
+
+    def on_image_select(self, button: TileButton) -> None:
         """Callback for when a tile is clicked in the TileSelectorFrame"""
 
-        sender: TileButton = self.sender()
-        button = self.findChild(DungeonFrame).get_currently_checked_button()
+        checked: TileButton = self.findChild(DungeonFrame).findChild(QButtonGroup).checkedButton()
 
-        if button is not None and button.tile != sender.tile:
-            button.tile = sender.tile
+        if checked is not None and checked.tile != button.tile:
+            checked.tile = button.tile
             self.check_dungeon()
 
     def on_reset(self) -> None:
