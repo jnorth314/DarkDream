@@ -1,17 +1,46 @@
+from dataclasses import dataclass
 import os
 import sys
 import time
 
 import cv2
+from pygrabber.dshow_graph import FilterGraph
 from PyQt6.QtCore import pyqtSignal, QObject, Qt, QThread
-from PyQt6.QtGui import QCloseEvent, QIcon, QImage, QPixmap
-from PyQt6.QtWidgets import QApplication, QButtonGroup, QFrame, QGridLayout, QLabel, QMainWindow, QPushButton, QWidget
+from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QIcon, QImage, QPixmap
+from PyQt6.QtWidgets import (
+    QApplication, QButtonGroup, QFrame, QGridLayout, QLabel, QMainWindow, QMenu, QMenuBar, QPushButton, QWidget
+)
 
 from dungeon import (
     convert_string_to_dungeon, Dungeon, DungeonTile, get_matching_dungeons, get_tile_image, USED_DUNGEON_TILES
 )
 
 ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/icon.ico")
+
+@dataclass
+class DeviceInfo:
+    text: str
+    idx: int
+    resolution: tuple[int, int]
+
+def get_all_capture_devices() -> list[DeviceInfo]:
+    """Get all available capture devices"""
+
+    #TODO: Find a solution that doesn't rely entirely on this library, preferably using cv2 exclusively
+
+    def get_device_resolution(idx: int) -> tuple[int, int]:
+        """Get resolution of the given index"""
+
+        graph = FilterGraph()
+        graph.add_video_input_device(idx)
+        resolution = graph.get_input_device().get_current_format()
+        graph.remove_filters()
+
+        return resolution
+
+    return [
+        DeviceInfo(device, i, get_device_resolution(i)) for i, device in enumerate(FilterGraph().get_input_devices())
+    ]
 
 class VideoCapture(QThread):
     """Worker responsible for capturing the image"""
@@ -102,6 +131,7 @@ class DungeonFrame(QFrame):
         label = QLabel(self)
         label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         label.setFixedSize(16*15, 16*15)
+        label.hide()
 
     def get_dungeon(self) -> Dungeon:
         """Reassemble the tiles into a Dungeon and return the result"""
@@ -215,7 +245,7 @@ class DungeonCreatorWidget(QWidget):
     def on_image_select(self, button: TileButton) -> None:
         """Callback for when a tile is clicked in the TileSelectorFrame"""
 
-        checked: TileButton = self.findChild(DungeonFrame).findChild(QButtonGroup).checkedButton()
+        checked: TileButton | None = self.findChild(DungeonFrame).findChild(QButtonGroup).checkedButton()
 
         if checked is not None and checked.tile != button.tile:
             checked.tile = button.tile
@@ -259,6 +289,32 @@ class DungeonCreatorWidget(QWidget):
                     if button.tile == DungeonTile(0xFFFFFFFF, 0):
                         button.force()
 
+class CaptureAction(QAction):
+    """Action for selecting a capture"""
+
+    def __init__(self, device: DeviceInfo, parent: QWidget | None=None) -> None:
+        super().__init__(device.text, parent=parent)
+
+        self.device = device
+
+        self.setCheckable(True)
+
+class MenuBar(QMenuBar):
+    """MenuBar for the application"""
+
+    def __init__(self, parent: QWidget | None=None) -> None:
+        super().__init__(parent=parent)
+
+        self.addMenu(file := QMenu("File", self))
+        file.addMenu(captures := QMenu("Select Capture", file))
+
+        actions = QActionGroup(captures)
+        actions.setExclusive(False)
+
+        for device in get_all_capture_devices():
+            captures.addAction(action := CaptureAction(device, captures))
+            actions.addAction(action)
+
 class DarkDream(QMainWindow):
     """Application for predicting dungeons in Dark Cloud"""
 
@@ -268,11 +324,45 @@ class DarkDream(QMainWindow):
         self.setWindowTitle("DarkDream")
         self.setWindowIcon(QIcon(ICON_PATH))
 
+        self.setMenuBar(menu := MenuBar(self))
         self.setCentralWidget(widget := DungeonCreatorWidget(self))
         self.setFixedSize(self.minimumSize())
 
+        menu.findChild(QActionGroup).triggered.connect(self.on_capture_select)
+
         worker = VideoCapture(self)
         worker.captured.connect(widget.on_image)
+        worker.closed.connect(self.on_capture_closed)
+
+    def on_capture_select(self, action: CaptureAction) -> None:
+        """Callback for when a capture is selected"""
+
+        is_checked = action.isChecked()
+
+        for capture in self.findChild(MenuBar).findChildren(CaptureAction):
+            capture.setChecked(False)
+
+        action.setChecked(is_checked)
+
+        worker = self.findChild(VideoCapture)
+        worker.requestInterruption()
+        worker.wait()
+
+        if is_checked:
+            device = action.device
+            worker.open(device.idx, device.resolution[0], device.resolution[1])
+            worker.start()
+            self.findChild(DungeonCreatorWidget).findChild(DungeonFrame).findChild(QLabel).show()
+
+    def on_capture_closed(self) -> None:
+        """Callback when the capture is closed"""
+
+        self.findChild(DungeonCreatorWidget).findChild(DungeonFrame).findChild(QLabel).hide()
+
+        action: CaptureAction | None = self.findChild(MenuBar).findChild(QActionGroup).checkedAction()
+
+        if action is not None:
+            action.setChecked(False)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """Gracefully close the GUI by terminating and waiting for any threads"""
