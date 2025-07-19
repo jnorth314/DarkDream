@@ -8,7 +8,8 @@ from pygrabber.dshow_graph import FilterGraph
 from PyQt6.QtCore import pyqtSignal, QObject, Qt, QThread
 from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QIcon, QImage, QPixmap
 from PyQt6.QtWidgets import (
-    QApplication, QButtonGroup, QFrame, QGridLayout, QLabel, QMainWindow, QMenu, QMenuBar, QPushButton, QWidget
+    QApplication, QButtonGroup, QDialog, QFrame, QGridLayout, QLabel, QMainWindow, QMenu, QMenuBar, QPushButton,
+    QSpinBox, QWidget
 )
 
 from dungeon import (
@@ -19,6 +20,8 @@ ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/ico
 
 @dataclass
 class DeviceInfo:
+    """Information regarding the Device in order to open the capture"""
+
     text: str
     idx: int
     resolution: tuple[int, int]
@@ -209,11 +212,53 @@ class MatchesFrame(QFrame):
         label: QLabel = layout.itemAtPosition(0, 1).widget()
         label.setText(str(matches))
 
+class SettingsDialog(QDialog):
+    """Settings dialog for cropping and resizing the captured image"""
+
+    def __init__(self, parent: QWidget | None=None) -> None:
+        super().__init__(parent=parent)
+
+        self.setWindowTitle("Settings")
+
+        layout = QGridLayout(self)
+        layout.addWidget(QLabel("X", self), 0, 0, Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(QLabel("Y", self), 0, 1, Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(x_ := QSpinBox(self), 1, 0)
+        layout.addWidget(y_ := QSpinBox(self), 1, 1)
+        layout.addWidget(QLabel("Width", self), 2, 0, Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(QLabel("Height", self), 2, 1, Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(w_ := QSpinBox(self), 3, 0)
+        layout.addWidget(h_ := QSpinBox(self), 3, 1)
+        self.setLayout(layout)
+
+        x_.setMaximum(10000)
+        y_.setMaximum(10000)
+        w_.setMaximum(10000)
+        h_.setMaximum(10000)
+
+        w_.setMinimum(1)
+        h_.setMinimum(1)
+
+    @property
+    def bounds(self) -> tuple[int, int, int, int]:
+        """Parameters that make up the bounding box of an image"""
+
+        layout: QGridLayout = self.layout()
+
+        x_: QSpinBox = layout.itemAtPosition(1, 0).widget()
+        y_: QSpinBox = layout.itemAtPosition(1, 1).widget()
+        w_: QSpinBox = layout.itemAtPosition(3, 0).widget()
+        h_: QSpinBox = layout.itemAtPosition(3, 1).widget()
+
+        return (x_.value(), y_.value(), w_.value(), h_.value())
+
 class DungeonCreatorWidget(QWidget):
     """Widget containing all of the elements to craft dungeons"""
 
     def __init__(self, parent: QWidget | None=None) -> None:
         super().__init__(parent=parent)
+
+        SettingsDialog(self)
 
         layout = QGridLayout(self)
         layout.addWidget(tiles := DungeonFrame(self), 0, 0, 1, 2)
@@ -266,6 +311,12 @@ class DungeonCreatorWidget(QWidget):
     def on_image(self, img: cv2.typing.MatLike) -> None:
         """Callback for when the image is captured"""
 
+        x, y, w, h = self.findChild(SettingsDialog).bounds
+        height, width, _ = img.shape
+
+        if (width - x) >= w and (height - y) >= h:
+            img = img[y:y + h, x:x + w]
+
         self.findChild(DungeonFrame).set_overlay(img)
 
     def check_dungeon(self) -> None:
@@ -299,6 +350,9 @@ class CaptureAction(QAction):
 
         self.setCheckable(True)
 
+class SettingsAction(QAction):
+    """Action for opening the settings"""
+
 class MenuBar(QMenuBar):
     """MenuBar for the application"""
 
@@ -306,7 +360,9 @@ class MenuBar(QMenuBar):
         super().__init__(parent=parent)
 
         self.addMenu(file := QMenu("File", self))
+
         file.addMenu(captures := QMenu("Select Capture", file))
+        file.addAction(SettingsAction("Settings", file))
 
         actions = QActionGroup(captures)
         actions.setExclusive(False)
@@ -329,6 +385,7 @@ class DarkDream(QMainWindow):
         self.setFixedSize(self.minimumSize())
 
         menu.findChild(QActionGroup).triggered.connect(self.on_capture_select)
+        menu.findChild(SettingsAction).triggered.connect(self.on_settings)
 
         worker = VideoCapture(self)
         worker.captured.connect(widget.on_image)
@@ -353,6 +410,11 @@ class DarkDream(QMainWindow):
             worker.open(device.idx, device.resolution[0], device.resolution[1])
             worker.start()
             self.findChild(DungeonCreatorWidget).findChild(DungeonFrame).findChild(QLabel).show()
+
+    def on_settings(self) -> None:
+        """Callback when the settings in the menu bar is selected"""
+
+        self.findChild(DungeonCreatorWidget).findChild(SettingsDialog).show()
 
     def on_capture_closed(self) -> None:
         """Callback when the capture is closed"""
