@@ -223,21 +223,18 @@ class SettingsDialog(QDialog):
         layout = QGridLayout(self)
         layout.addWidget(QLabel("X", self), 0, 0, Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(QLabel("Y", self), 0, 1, Qt.AlignmentFlag.AlignHCenter)
-        layout.addWidget(x_ := QSpinBox(self), 1, 0)
-        layout.addWidget(y_ := QSpinBox(self), 1, 1)
+        layout.addWidget(x := QSpinBox(self), 1, 0)
+        layout.addWidget(y := QSpinBox(self), 1, 1)
         layout.addWidget(QLabel("Width", self), 2, 0, Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(QLabel("Height", self), 2, 1, Qt.AlignmentFlag.AlignHCenter)
-        layout.addWidget(w_ := QSpinBox(self), 3, 0)
-        layout.addWidget(h_ := QSpinBox(self), 3, 1)
+        layout.addWidget(w := QSpinBox(self), 3, 0)
+        layout.addWidget(h := QSpinBox(self), 3, 1)
         self.setLayout(layout)
 
-        x_.setMaximum(10000)
-        y_.setMaximum(10000)
-        w_.setMaximum(10000)
-        h_.setMaximum(10000)
-
-        w_.setMinimum(1)
-        h_.setMinimum(1)
+        x.setMaximum(10000)
+        y.setMaximum(10000)
+        w.setMinimum(1), w.setMaximum(10000)
+        h.setMinimum(1), h.setMaximum(10000)
 
     @property
     def bounds(self) -> tuple[int, int, int, int]:
@@ -245,12 +242,12 @@ class SettingsDialog(QDialog):
 
         layout: QGridLayout = self.layout()
 
-        x_: QSpinBox = layout.itemAtPosition(1, 0).widget()
-        y_: QSpinBox = layout.itemAtPosition(1, 1).widget()
-        w_: QSpinBox = layout.itemAtPosition(3, 0).widget()
-        h_: QSpinBox = layout.itemAtPosition(3, 1).widget()
+        x: QSpinBox = layout.itemAtPosition(1, 0).widget()
+        y: QSpinBox = layout.itemAtPosition(1, 1).widget()
+        w: QSpinBox = layout.itemAtPosition(3, 0).widget()
+        h: QSpinBox = layout.itemAtPosition(3, 1).widget()
 
-        return (x_.value(), y_.value(), w_.value(), h_.value())
+        return (x.value(), y.value(), w.value(), h.value())
 
 class DungeonCreatorWidget(QWidget):
     """Widget containing all of the elements to craft dungeons"""
