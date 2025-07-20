@@ -1,46 +1,115 @@
-from functools import cache
-import json
 import os
+import sqlite3
 
 import cv2
 
-@cache
-def get_tiles() -> list[cv2.typing.MatLike]:
-    """Return a list of images of all tiles that make up a minimap"""
+from dungeon import convert_string_to_dungeon, DATABASE_PATH, Dungeon, DungeonTile, get_tile_image, USED_DUNGEON_TILES
 
-    path_to_tiles = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/tiles.png")
+def get_tile_ascii(tile: DungeonTile) -> str:
+    """Return the ASCII equivalent to the tile"""
 
-    tiles = cv2.imread(path_to_tiles)
+    TILES_TO_ASCII = {
+        0xFFFFFFFF: [" ", " ", " ", " "],
+        0x00000000: ["║", "═", "║", "═"],
+        0x00000001: ["╔", "╗", "╝", "╚"],
+        0x00000002: ["╬", "╬", "╬", "╬"],
+        0x00000003: ["╦", "╣", "╩", "╠"],
+        0x00000004: ["╥", "╡", "╨", "╞"],
+        0x00000005: ["─", "│", "─", "│"],
+        0x00000006: ["│", "─", "│", "─"],
+        0x00000007: ["─", "│", "─", "│"],
+        0x00000008: ["│", "─", "│", "─"],
+        0x00000009: ["╨", "╞", "╥", "╡"],
+        0x0000000A: ["╞", "╥", "╡", "╨"],
+        0x0000000B: ["╥", "╡", "╨", "╞"],
+        0x0000000C: ["╡", "╨", "╞", "╥"],
+        0x0000000D: ["┌", "┐", "┘", "└"],
+        0x0000000E: ["┐", "┘", "└", "┌"],
+        0x0000000F: ["┘", "└", "┌", "┐"],
+        0x00000010: ["└", "┌", "┐", "┘"],
+        0x00000011: [" ", " ", " ", " "],
+        0x00000012: ["╥", "╡", "╨", "╞"],
+        0x00000013: ["╡", "╨", "╞", "╥"],
+        0x00000014: ["╨", "╞", "╥", "╡"],
+        0x00000015: ["╞", "╥", "╡", "╨"],
+        0x00000016: ["╫", "╪", "╫", "╪"],
+        0x00000017: ["╪", "╫", "╪", "╫"],
+        0x00000018: ["╫", "╪", "╫", "╪"],
+        0x00000019: ["╪", "╫", "╪", "╫"],
+        0x0000001A: ["║", "═", "║", "═"],
+        0x0000001B: ["═", "║", "═", "║"],
+        0x0000001C: ["║", "═", "║", "═"],
+        0x0000001D: ["═", "║", "═", "║"],
+        0x0000001E: ["S", "S", "S", "S"],
+        0x0000001F: ["E", "E", "E", "E"],
+        0x00000020: ["O", "O", "O", "O"],
+        0x00000021: ["O", "O", "O", "O"],
+        0x00000022: ["O", "O", "O", "O"],
+        0x00000023: ["O", "O", "O", "O"],
+        0x00000024: ["▀", "▐", "▄", "▌"],
+        0x00000025: ["▐", "▄", "▌", "▀"],
+        0x00000026: ["▄", "▌", "▀", "▐"],
+        0x00000027: ["▌", "▀", "▐", "▄"],
+        0x00000028: ["?", "?", "?", "?"],
+        0x00000029: ["?", "?", "?", "?"],
+        0x0000002A: ["?", "?", "?", "?"],
+        0x0000002B: ["?", "?", "?", "?"],
+        0x0000002C: ["║", "═", "║", "═"],
+        0x0000002D: ["°", "°", "°", "°"],
+        0x0000002E: ["°", "°", "°", "°"],
+    }
 
-    return [
-        tiles[y:y + 16, x:x + 16]
-        for y in range(0, 16*6, 16)
-        for x in range(0, 16*8, 16)
-    ]
+    if tile.id_ not in TILES_TO_ASCII or tile.rotation >= 4:
+        raise ValueError(f"Invalid Tile Data ({tile.id_}, {tile.rotation})")
 
-def generate_minimap(map_: list[list[int]]) -> cv2.typing.MatLike:
-    """Generate an image of the minimap based on the tile data"""
+    return TILES_TO_ASCII[tile.id_][tile.rotation]
 
-    MAP_WIDTH = 15
-    MAP_HEIGHT = 15
+def display_dungeon_map(dungeon: Dungeon) -> None:
+    """Print the dungeon to the console"""
 
-    tiles = get_tiles()
+    for y in range(15):
+        for x in range(15):
+            print(
+                get_tile_ascii(dungeon[y][x]),
+                end=""
+            )
+        print()
 
-    return cv2.vconcat([cv2.hconcat([tiles[map_[y][x]] for x in range(MAP_HEIGHT)]) for y in range(MAP_WIDTH)])
+def display_dungeon_image(dungeon: Dungeon) -> None:
+    """Display the dungeon minimap in a new window"""
+
+    cv2.imshow(
+        "Dungeon Minimap",
+        cv2.vconcat([cv2.hconcat([get_tile_image(dungeon[y][x]) for x in range(15)]) for y in range(15)])
+    )
+    cv2.waitKey(0)
 
 def main() -> None:
-    """Open maps.json and begin creating minimaps"""
+    """Generate all screenshots for each dungeon layout"""
 
-    path_to_maps = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/maps.json")
+    PATH_TO_SCREENSHOTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/screenshots")
 
-    with open(path_to_maps, "r") as f:
-        maps = json.load(f)
+    if not os.path.exists(PATH_TO_SCREENSHOTS):
+        os.mkdir(PATH_TO_SCREENSHOTS)
 
-    path_to_screenshots = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../build/screenshots/")
-    os.makedirs(path_to_screenshots, exist_ok=True)
+    cv2.imwrite(
+        f"{PATH_TO_SCREENSHOTS}/example_tiles.png",
+        cv2.hconcat([get_tile_image(tile)
+                     for tile in sorted(USED_DUNGEON_TILES, key=lambda t: (((t.id_ + 1) & 0xFF) << 2) + t.rotation)])
+    )
 
-    for i, map_ in enumerate(maps.values()):
-        cv2.imwrite(os.path.join(path_to_screenshots, f"{i}.png"), generate_minimap(map_))
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        cursor = connection.cursor()
+
+        cursor.execute("SELECT * FROM dungeons")
+
+        for seed, layout in cursor:
+            dungeon = convert_string_to_dungeon(layout)
+
+            cv2.imwrite(
+                f"{PATH_TO_SCREENSHOTS}/{seed:04X}.png",
+                cv2.vconcat([cv2.hconcat([get_tile_image(dungeon[y][x]) for x in range(15)]) for y in range(15)])
+            )
 
 if __name__ == "__main__":
     main()

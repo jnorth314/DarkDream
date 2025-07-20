@@ -1,18 +1,5 @@
-# Output of built executable and screenshots
 build/
 dist/
-*.spec
-
-# Output of Coverage Reports
-.coverage
-htmlcov/
-
-# Output of mypy
-.mypy_cache/
-
-# Python Cache Files
 __pycache__/
-.pyc
-
-# VSCode settings
+*.spec
 .vscode/

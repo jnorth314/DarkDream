@@ -1,4 +1,4 @@
-python3.12 -m PyInstaller %~dp0/../src/main.py^
+python3.12 -m PyInstaller %~dp0/../src/DarkDream.py^
     --clean^
     --onefile^
     --windowed^
