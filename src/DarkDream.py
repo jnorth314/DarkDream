@@ -17,7 +17,10 @@ from dungeon import (
     USED_DUNGEON_TILES
 )
 
-ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/icon.ico")
+IS_FROZEN = hasattr(sys, "frozen") and hasattr(sys, "_MEIPASS") # For PyInstaller
+BASE_DIRECTORY = sys._MEIPASS if IS_FROZEN else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+
+ICON_PATH = os.path.join(BASE_DIRECTORY, "res/icon.ico")
 
 @dataclass
 class DeviceInfo:

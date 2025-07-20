@@ -3,12 +3,16 @@ from functools import cache
 import os
 import re
 import sqlite3
+import sys
 from typing import Callable
 
 import cv2
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/DUNGEONS.db")
-TILES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/tiles.png")
+IS_FROZEN = hasattr(sys, "frozen") and hasattr(sys, "_MEIPASS") # For PyInstaller
+BASE_DIRECTORY = sys._MEIPASS if IS_FROZEN else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+
+DATABASE_PATH = os.path.join(BASE_DIRECTORY, "res/DUNGEONS.db")
+TILES_PATH = os.path.join(BASE_DIRECTORY, "res/tiles.png")
 
 @dataclass(unsafe_hash=True)
 class DungeonTile:
