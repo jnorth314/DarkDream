@@ -8,12 +8,13 @@ from pygrabber.dshow_graph import FilterGraph
 from PyQt6.QtCore import pyqtSignal, QObject, Qt, QThread
 from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QIcon, QImage, QPixmap
 from PyQt6.QtWidgets import (
-    QApplication, QButtonGroup, QDialog, QFrame, QGridLayout, QLabel, QMainWindow, QMenu, QMenuBar, QPushButton,
-    QSpinBox, QWidget
+    QApplication, QButtonGroup, QCheckBox, QDialog, QFrame, QGridLayout, QLabel, QMainWindow, QMenu, QMenuBar,
+    QPushButton, QSpinBox, QWidget
 )
 
 from dungeon import (
-    convert_string_to_dungeon, Dungeon, DungeonTile, get_matching_dungeons, get_tile_image, USED_DUNGEON_TILES
+    convert_string_to_dungeon, Dungeon, DungeonTile, get_dungeon_from_image, get_matching_dungeons, get_tile_image,
+    USED_DUNGEON_TILES
 )
 
 ICON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/icon.ico")
@@ -221,14 +222,16 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("Settings")
 
         layout = QGridLayout(self)
-        layout.addWidget(QLabel("X", self), 0, 0, Qt.AlignmentFlag.AlignHCenter)
-        layout.addWidget(QLabel("Y", self), 0, 1, Qt.AlignmentFlag.AlignHCenter)
-        layout.addWidget(x := QSpinBox(self), 1, 0)
-        layout.addWidget(y := QSpinBox(self), 1, 1)
-        layout.addWidget(QLabel("Width", self), 2, 0, Qt.AlignmentFlag.AlignHCenter)
-        layout.addWidget(QLabel("Height", self), 2, 1, Qt.AlignmentFlag.AlignHCenter)
-        layout.addWidget(w := QSpinBox(self), 3, 0)
-        layout.addWidget(h := QSpinBox(self), 3, 1)
+        layout.addWidget(QLabel("X", self), 0, 0, 1, 2, Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(QLabel("Y", self), 0, 2, 1, 2, Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(x := QSpinBox(self), 1, 0, 1, 2)
+        layout.addWidget(y := QSpinBox(self), 1, 2, 1, 2)
+        layout.addWidget(QLabel("Width", self), 2, 0, 1, 2, Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(QLabel("Height", self), 2, 2, 1, 2, Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(w := QSpinBox(self), 3, 0, 1, 2)
+        layout.addWidget(h := QSpinBox(self), 3, 2, 1, 2)
+        layout.addWidget(QCheckBox(self), 4, 0, 1, 1)
+        layout.addWidget(QLabel("Image Recognition?", self), 4, 1, 1, 3)
         self.setLayout(layout)
 
         x.setMaximum(10000)
@@ -243,9 +246,9 @@ class SettingsDialog(QDialog):
         layout: QGridLayout = self.layout()
 
         x: QSpinBox = layout.itemAtPosition(1, 0).widget()
-        y: QSpinBox = layout.itemAtPosition(1, 1).widget()
+        y: QSpinBox = layout.itemAtPosition(1, 2).widget()
         w: QSpinBox = layout.itemAtPosition(3, 0).widget()
-        h: QSpinBox = layout.itemAtPosition(3, 1).widget()
+        h: QSpinBox = layout.itemAtPosition(3, 2).widget()
 
         return (x.value(), y.value(), w.value(), h.value())
 
@@ -315,6 +318,23 @@ class DungeonCreatorWidget(QWidget):
             img = img[y:y + h, x:x + w]
 
         self.findChild(DungeonFrame).set_overlay(img)
+
+        if self.findChild(SettingsDialog).findChild(QCheckBox).isChecked():
+            dungeon = get_dungeon_from_image(img)
+            layout: QGridLayout = self.findChild(DungeonFrame).layout()
+
+            has_updated = False
+
+            for y in range(15):
+                for x in range(15):
+                    button: TileButton = layout.itemAtPosition(y, x).widget()
+
+                    if button.tile == DungeonTile(0xFFFFFFFF, 0) and button.tile != dungeon[y][x]:
+                        button.tile = dungeon[y][x]
+                        has_updated = True
+
+            if has_updated:
+                self.check_dungeon()
 
     def check_dungeon(self) -> None:
         """Check if the dungeon was a match, if so fill out the rest of the minimap"""

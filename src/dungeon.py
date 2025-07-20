@@ -149,3 +149,55 @@ def get_tile_image(tile: DungeonTile) -> cv2.typing.MatLike:
         x, y = 16*tile.rotation, 16*(tile.id_ + 1)
 
     return cv2.imread(TILES_PATH)[y:y + 16, x:x + 16]
+
+HASHABLE_TILES = [ # Ignoring specific tiles during image recognition
+    DungeonTile(0x00, 0), DungeonTile(0x00, 1), DungeonTile(0x02, 0), DungeonTile(0x03, 0),
+    DungeonTile(0x03, 1), DungeonTile(0x03, 2), DungeonTile(0x03, 3), DungeonTile(0x05, 0),
+    DungeonTile(0x06, 0), DungeonTile(0x07, 0), DungeonTile(0x08, 0), DungeonTile(0x09, 0),
+    DungeonTile(0x0A, 0), DungeonTile(0x0B, 0), DungeonTile(0x0C, 0), DungeonTile(0x0D, 0),
+    DungeonTile(0x0E, 0), DungeonTile(0x0F, 0), DungeonTile(0x10, 0), DungeonTile(0x12, 0),
+    DungeonTile(0x13, 0), DungeonTile(0x14, 0), DungeonTile(0x15, 0), DungeonTile(0x16, 0),
+    DungeonTile(0x17, 0), DungeonTile(0x1A, 0), DungeonTile(0x1B, 0), DungeonTile(0x1E, 0),
+    DungeonTile(0x1F, 2), DungeonTile(0x20, 0), DungeonTile(0x24, 0), DungeonTile(0x25, 0),
+    DungeonTile(0x26, 0), DungeonTile(0x27, 0), DungeonTile(0x28, 0)
+]
+
+SCORE_THRESHOLD = 0.90
+
+def get_image_phash(img: cv2.typing.MatLike) -> cv2.typing.MatLike:
+    """Calculate the phash of a given image"""
+
+    return cv2.img_hash.pHash(cv2.resize(img, (32, 32), interpolation=cv2.INTER_AREA))
+
+@cache
+def get_tile_phash(tile: DungeonTile) -> cv2.typing.MatLike:
+    """Calculate the phash of a given tile"""
+
+    return get_image_phash(get_tile_image(tile))
+
+def get_dungeon_from_image(img: cv2.typing.MatLike) -> Dungeon:
+    """Get the best fit for every tile in the provided image"""
+
+    def get_best_fit_tile(img: cv2.typing.MatLike) -> DungeonTile:
+        """Compare the phash amongst all tiles to find which one is the highest score, while meeting a threshold"""
+
+        module = cv2.img_hash.PHash.create()
+        phash = get_image_phash(img)
+
+        get_similarity: Callable[[DungeonTile], float] = (
+            lambda tile: 1.0 - module.compare(phash, get_tile_phash(tile))/64.0
+        )
+
+        tile = max(HASHABLE_TILES, key=get_similarity)
+
+        if get_similarity(tile) < SCORE_THRESHOLD:
+            return DungeonTile(0xFFFFFFFF, 0)
+
+        return tile
+
+    img = cv2.resize(img, (16*15, 16*15))
+
+    return [
+        [get_best_fit_tile(img[16*y:16*y + 16, 16*x:16*x + 16]) for x in range(15)]
+         for y in range(15)
+    ]
