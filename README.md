@@ -17,8 +17,12 @@ Through the use of [scripting](./tools/generate_dungeons.py), all 21475 maps can
 
 <p align="center">
   <img src="docs/example_tiles.png" title="Map Tile Set">
+  <br></br>
   <img src="docs/example_generated_maps.png" title="Generated Minimaps">
 </p>
+
+### Image Recognition
+By capturing the game feed and cropping to the selection of the map, the dungeon can automatically be determined using the tileset. This is done by precomputing the entire tileset's [phash](https://en.wikipedia.org/wiki/Perceptual_hashing). Every frame the app will compare each tile's hash to the precomputed hash. If this hash gives a similarity greater than a threshold then that tile is determined to be a match.
 
 ## Known Issues
 
