@@ -1,4 +1,4 @@
-from dataclasses import astuple, dataclass
+from dataclasses import dataclass
 from functools import cache
 import os
 import re
@@ -20,11 +20,6 @@ class DungeonTile:
     rotation: int
 
 type Dungeon = list[list[DungeonTile]]
-
-@dataclass
-class DungeonEntry:
-    seed: int
-    layout: str
 
 USED_DUNGEON_TILES = [ # Precomputed from DUNGEONS.db
     DungeonTile(0xFFFFFFFF, 0),
@@ -121,10 +116,7 @@ def create_dungeon_entry(seed: int, dungeon: str) -> None:
 
     with sqlite3.connect(DATABASE_PATH) as connection:
         cursor = connection.cursor()
-        cursor.execute(
-            "INSERT OR REPLACE INTO dungeons VALUES (?, ?)",
-            astuple(DungeonEntry(seed, dungeon))
-        )
+        cursor.execute(f"INSERT OR REPLACE INTO dungeons VALUES ({seed}, {dungeon})")
         connection.commit()
 
 def get_matching_dungeons(dungeon: Dungeon) -> list[str]:
