@@ -89,6 +89,7 @@ class TileButton(QPushButton):
     def __init__(self, parent: QWidget | None=None) -> None:
         super().__init__(parent=parent)
 
+        self.score = 0.0
         self._tile = DungeonTile(0xFFFFFFFF, 0)
         self.setFixedSize(16, 16)
         self.setCheckable(True)
@@ -278,6 +279,7 @@ class DungeonCreatorWidget(QWidget):
         """Callback for when a tile is clicked in the DungeonFrame"""
 
         if not button.isChecked() and button.tile != DungeonTile(0xFFFFFFFF, 0): # A double clicked tile should be reset
+            button.score = 0.0
             button.tile = DungeonTile(0xFFFFFFFF, 0)
             self.check_dungeon()
 
@@ -307,6 +309,7 @@ class DungeonCreatorWidget(QWidget):
         for y in range(15):
             for x in range(15):
                 button: TileButton = layout.itemAtPosition(y, x).widget()
+                button.score = 0.0
                 button.tile = DungeonTile(0xFFFFFFFF, 0)
 
         self.findChild(MatchesFrame).set_matches(21475)
@@ -331,9 +334,11 @@ class DungeonCreatorWidget(QWidget):
             for y in range(15):
                 for x in range(15):
                     button: TileButton = layout.itemAtPosition(y, x).widget()
+                    tile, score = dungeon[y][x]
 
-                    if button.tile == DungeonTile(0xFFFFFFFF, 0) and button.tile != dungeon[y][x]:
-                        button.tile = dungeon[y][x]
+                    if button.score < score:
+                        button.score = score
+                        button.tile = tile
                         has_updated = True
 
             if has_updated:
@@ -355,6 +360,7 @@ class DungeonCreatorWidget(QWidget):
             for y in range(15):
                 for x in range(15):
                     button: TileButton = layout.itemAtPosition(y, x).widget()
+                    button.score = 1.0
                     button.tile = dungeon[y][x]
 
                     if button.tile == DungeonTile(0xFFFFFFFF, 0):
