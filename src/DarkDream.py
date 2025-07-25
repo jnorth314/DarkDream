@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from functools import cache
 import os
 import sys
 import time
@@ -83,6 +84,12 @@ class VideoCapture(QThread):
         self.video.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
+@cache
+def get_tile_icon(tile: DungeonTile) -> QIcon:
+    """Convert the tile into a QIcon for display"""
+
+    return QIcon(QPixmap(QImage(get_tile_image(tile).tobytes(), 16, 16, 48, QImage.Format.Format_BGR888)))
+
 class TileButton(QPushButton):
     """Button to hold tile information"""
 
@@ -102,18 +109,35 @@ class TileButton(QPushButton):
         self._tile = tile
 
         if self.tile != DungeonTile(0xFFFFFFFF, 0):
-            self.setIcon(
-                QIcon(QPixmap(QImage(get_tile_image(self.tile).tobytes(), 16, 16, 48, QImage.Format.Format_BGR888)))
-            )
+            self.setIcon(get_tile_icon(tile))
         else:
             self.setIcon(QIcon())
 
     def force(self) -> None:
         """Force the icon to be set for DungeonTile(0xFFFFFFFF, 0)"""
 
-        self.setIcon(
-            QIcon(QPixmap(QImage(get_tile_image(self.tile).tobytes(), 16, 16, 48, QImage.Format.Format_BGR888)))
-        )
+        self.setIcon(get_tile_icon(DungeonTile(0xFFFFFFFF, 0)))
+
+class OverlayLabel(QLabel):
+    """Overlayed image to display the dungeon on top of the buttons"""
+
+    def __init__(self, parent: QWidget | None=None) -> None:
+        super().__init__(parent=parent)
+
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setFixedSize(16*15, 16*15)
+        self.hide()
+
+    def set_image(self, img: cv2.typing.MatLike) -> None:
+        """Apply a transparent image to overlay on top of the DungeonFrame"""
+
+        img = cv2.resize(img, (16*15, 16*15))
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
+        img[..., 3] = 127
+
+        height, width, channels = img.shape
+
+        self.setPixmap(QPixmap(QImage(img.tobytes(), width, height, width*channels, QImage.Format.Format_RGBA8888)))
 
 class DungeonFrame(QFrame):
     """Object to hold all of the TileButtons in a 15x15 grid"""
@@ -135,10 +159,7 @@ class DungeonFrame(QFrame):
 
         self.setLayout(layout)
 
-        label = QLabel(self)
-        label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        label.setFixedSize(16*15, 16*15)
-        label.hide()
+        OverlayLabel(self)
 
     def get_dungeon(self) -> Dungeon:
         """Reassemble the tiles into a Dungeon and return the result"""
@@ -154,19 +175,6 @@ class DungeonFrame(QFrame):
                 dungeon[y][x] = button.tile
 
         return dungeon
-
-    def set_overlay(self, img: cv2.typing.MatLike) -> None:
-        """Apply a transparent image to overlay on top of the DungeonFrame"""
-
-        img = cv2.resize(img, (16*15, 16*15))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
-        img[..., 3] = 127
-
-        height, width, channels = img.shape
-
-        self.findChild(QLabel).setPixmap(
-            QPixmap(QImage(img.tobytes(), width, height, width*channels, QImage.Format.Format_RGBA8888))
-        )
 
 class TileSelectorFrame(QFrame):
     """Object to hold all of the TileButtons for editing the DungeonFrame"""
@@ -320,7 +328,7 @@ class DungeonCreatorWidget(QWidget):
         if (width - x) >= w and (height - y) >= h:
             img = img[y:y + h, x:x + w]
 
-        self.findChild(DungeonFrame).set_overlay(img)
+        self.findChild(OverlayLabel).set_image(img)
 
         if self.findChild(SettingsDialog).findChild(QCheckBox).isChecked():
             dungeon = get_dungeon_from_image(img)
@@ -429,7 +437,7 @@ class DarkDream(QMainWindow):
             device = action.device
             worker.open(device.idx, device.resolution[0], device.resolution[1])
             worker.start()
-            self.findChild(DungeonCreatorWidget).findChild(DungeonFrame).findChild(QLabel).show()
+            self.findChild(OverlayLabel).show()
 
     def on_settings(self) -> None:
         """Callback when the settings in the menu bar is selected"""
@@ -439,7 +447,7 @@ class DarkDream(QMainWindow):
     def on_capture_closed(self) -> None:
         """Callback when the capture is closed"""
 
-        self.findChild(DungeonCreatorWidget).findChild(DungeonFrame).findChild(QLabel).hide()
+        self.findChild(OverlayLabel).hide()
 
         action: CaptureAction | None = self.findChild(MenuBar).findChild(QActionGroup).checkedAction()
 
