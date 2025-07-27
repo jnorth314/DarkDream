@@ -128,9 +128,12 @@ class OverlayLabel(QLabel):
         self.setFixedSize(16*15, 16*15)
         self.hide()
 
-    def set_image(self, img: cv2.typing.MatLike) -> None:
-        """Apply a transparent image to overlay on top of the DungeonFrame"""
+    @property
+    def img(self) -> None:
+        raise NotImplementedError
 
+    @img.setter
+    def img(self, img: cv2.typing.MatLike) -> None:
         img = cv2.resize(img, (16*15, 16*15))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
         img[..., 3] = 127
@@ -161,11 +164,9 @@ class DungeonFrame(QFrame):
 
         OverlayLabel(self)
 
-    def get_dungeon(self) -> Dungeon:
-        """Reassemble the tiles into a Dungeon and return the result"""
-
+    @property
+    def dungeon(self) -> Dungeon:
         layout: QGridLayout = self.layout()
-
         dungeon = [[DungeonTile(0xFFFFFFFF, 0) for _ in range(15)] for _ in range(15)]
 
         for y in range(15):
@@ -217,9 +218,15 @@ class MatchesFrame(QFrame):
 
         label.setFrameShape(QFrame.Shape.HLine)
 
-    def set_matches(self, matches: int) -> None:
-        """Update the label according to the number of matches"""
+    @property
+    def matches(self) -> int:
+        layout: QGridLayout = self.layout()
+        label: QLabel = layout.itemAtPosition(0, 1).widget()
 
+        return int(label.text())
+
+    @matches.setter
+    def matches(self, matches: int) -> None:
         layout: QGridLayout = self.layout()
         label: QLabel = layout.itemAtPosition(0, 1).widget()
         label.setText(str(matches))
@@ -317,7 +324,7 @@ class DungeonCreatorWidget(QWidget):
                 button: TileButton = layout.itemAtPosition(y, x).widget()
                 button.tile = DungeonTile(0xFFFFFFFF, 0)
 
-        self.findChild(MatchesFrame).set_matches(21475)
+        self.findChild(MatchesFrame).matches = 21475
 
     def on_image(self, img: cv2.typing.MatLike) -> None:
         """Callback for when the image is captured"""
@@ -328,7 +335,7 @@ class DungeonCreatorWidget(QWidget):
         if (width - x) >= w and (height - y) >= h:
             img = img[y:y + h, x:x + w]
 
-        self.findChild(OverlayLabel).set_image(img)
+        self.findChild(OverlayLabel).img = img
 
         if self.findChild(SettingsDialog).findChild(QCheckBox).isChecked():
             dungeon = get_dungeon_from_image(img)
@@ -350,10 +357,10 @@ class DungeonCreatorWidget(QWidget):
     def check_dungeon(self) -> None:
         """Check if the dungeon was a match, if so fill out the rest of the minimap"""
 
-        dungeon = self.findChild(DungeonFrame).get_dungeon()
+        dungeon = self.findChild(DungeonFrame).dungeon
         matches = get_matching_dungeons(dungeon)
 
-        self.findChild(MatchesFrame).set_matches(len(matches))
+        self.findChild(MatchesFrame).matches = len(matches)
 
         if len(matches) == 1:
             dungeon = convert_string_to_dungeon(matches[0])
