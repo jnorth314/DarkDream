@@ -348,7 +348,7 @@ class DungeonCreatorWidget(QWidget):
         """Check if the dungeon was a match, if so fill out the rest of the minimap"""
 
         dungeon = self.findChild(DungeonFrame).get_dungeon()
-        matches = get_matching_dungeons(dungeon)
+        matches = get_matching_dungeons(dungeon, self.findChild(SettingsDialog).findChild(QCheckBox).isChecked())
 
         self.findChild(MatchesFrame).set_matches(len(matches))
 

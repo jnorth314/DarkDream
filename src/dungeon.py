@@ -66,10 +66,21 @@ def convert_dungeon_to_string(dungeon: Dungeon) -> str:
 
     return "".join(get_hex_from_tile(dungeon[y][x]) for y in range(15) for x in range(15))
 
-def convert_dungeon_to_regex(dungeon: Dungeon) -> str:
+def convert_dungeon_to_regex(dungeon: Dungeon, is_image: bool) -> str:
     """Convert the dungeon into a regex string for matching"""
 
     WILDCARDS = {DungeonTile(0xFFFFFFFF, 0)}
+
+    TILE_ALTERNATIVES = { # These tiles can be confused with one another in phash
+        DungeonTile(0x01, 0): DungeonTile(0x0D, 0),
+        DungeonTile(0x01, 1): DungeonTile(0x0E, 0),
+        DungeonTile(0x01, 2): DungeonTile(0x0F, 0),
+        DungeonTile(0x01, 3): DungeonTile(0x10, 0),
+        DungeonTile(0x0D, 0): DungeonTile(0x01, 0),
+        DungeonTile(0x0E, 0): DungeonTile(0x01, 1),
+        DungeonTile(0x0F, 0): DungeonTile(0x01, 2),
+        DungeonTile(0x10, 0): DungeonTile(0x01, 3)
+    }
 
     regex = ""
     consecutive_wildcards = 0
@@ -83,7 +94,11 @@ def convert_dungeon_to_regex(dungeon: Dungeon) -> str:
                     regex += f"(..){{{consecutive_wildcards}}}"
                     consecutive_wildcards = 0
 
-                regex += get_hex_from_tile(dungeon[y][x])
+                if is_image and dungeon[y][x] in TILE_ALTERNATIVES:
+                    t1, t2 = dungeon[y][x], TILE_ALTERNATIVES[dungeon[y][x]]
+                    regex += f"({get_hex_from_tile(t1)}|{get_hex_from_tile(t2)})"
+                else:
+                    regex += get_hex_from_tile(dungeon[y][x])
 
     if consecutive_wildcards > 0:
         regex += f"(..){{{consecutive_wildcards}}}"
@@ -119,7 +134,7 @@ def create_dungeon_entry(seed: int, dungeon: str) -> None:
         cursor.execute(f"INSERT OR REPLACE INTO dungeons VALUES ({seed}, {dungeon})")
         connection.commit()
 
-def get_matching_dungeons(dungeon: Dungeon) -> list[str]:
+def get_matching_dungeons(dungeon: Dungeon, is_image: bool) -> list[str]:
     """Get a list of matching dungeon strings"""
 
     dungeons:  list[str] = []
@@ -128,7 +143,7 @@ def get_matching_dungeons(dungeon: Dungeon) -> list[str]:
         connection.create_function("REGEXP", 2, lambda pattern, string : re.search(pattern, string) is not None)
 
         cursor = connection.cursor()
-        cursor.execute(f"SELECT * FROM dungeons WHERE layout REGEXP \"{convert_dungeon_to_regex(dungeon)}\"")
+        cursor.execute(f"SELECT * FROM dungeons WHERE layout REGEXP \"{convert_dungeon_to_regex(dungeon, is_image)}\"")
 
         for _, layout in cursor:
             dungeons.append(layout)
@@ -147,10 +162,12 @@ def get_tile_image(tile: DungeonTile) -> cv2.typing.MatLike:
     return cv2.imread(TILES_PATH)[y:y + 16, x:x + 16]
 
 HASHABLE_TILES = [ # Ignoring specific tiles during image recognition
-    DungeonTile(0x00, 0), DungeonTile(0x00, 1), DungeonTile(0x02, 0), DungeonTile(0x03, 0),
+    DungeonTile(0x00, 0), DungeonTile(0x00, 1), DungeonTile(0x01, 0), DungeonTile(0x01, 1),
+    DungeonTile(0x01, 2), DungeonTile(0x01, 3), DungeonTile(0x02, 0), DungeonTile(0x03, 0),
     DungeonTile(0x03, 1), DungeonTile(0x03, 2), DungeonTile(0x03, 3), DungeonTile(0x05, 0),
     DungeonTile(0x06, 0), DungeonTile(0x07, 0), DungeonTile(0x08, 0), DungeonTile(0x09, 0),
-    DungeonTile(0x0A, 0), DungeonTile(0x0B, 0), DungeonTile(0x0C, 0), DungeonTile(0x12, 0),
+    DungeonTile(0x0A, 0), DungeonTile(0x0B, 0), DungeonTile(0x0C, 0), DungeonTile(0x0D, 0),
+    DungeonTile(0x0E, 0), DungeonTile(0x0F, 0), DungeonTile(0x10, 0), DungeonTile(0x12, 0),
     DungeonTile(0x13, 0), DungeonTile(0x14, 0), DungeonTile(0x15, 0), DungeonTile(0x16, 0),
     DungeonTile(0x17, 0), DungeonTile(0x1A, 0), DungeonTile(0x1B, 0), DungeonTile(0x1E, 0),
     DungeonTile(0x1F, 2), DungeonTile(0x20, 0), DungeonTile(0x24, 0), DungeonTile(0x25, 0),
