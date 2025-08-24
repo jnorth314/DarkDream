@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
 )
 
 from dungeon import (
-    convert_string_to_dungeon, Dungeon, DungeonTile, get_dungeon_from_image, get_matching_dungeons, get_tile_image,
+    convert_string_to_layout, DungeonLayout, DungeonTile, get_layout_from_image, get_matching_layouts, get_tile_image,
     USED_DUNGEON_TILES
 )
 
@@ -166,7 +166,7 @@ class DungeonFrame(QFrame):
         OverlayLabel(self)
 
     @property
-    def dungeon(self) -> Dungeon:
+    def dungeon(self) -> DungeonLayout:
         layout: QGridLayout = self.layout()
         dungeon = [[DungeonTile(0xFFFFFFFF, 0) for _ in range(15)] for _ in range(15)]
 
@@ -341,7 +341,7 @@ class DungeonCreatorWidget(QWidget):
         self.findChild(OverlayLabel).img = img
 
         if self.findChild(SettingsDialog).findChild(QCheckBox).isChecked():
-            dungeon = get_dungeon_from_image(img)
+            dungeon = get_layout_from_image(img)
             layout: QGridLayout = self.findChild(DungeonFrame).layout()
 
             has_updated = False
@@ -363,12 +363,12 @@ class DungeonCreatorWidget(QWidget):
         """Check if the dungeon was a match, if so fill out the rest of the minimap"""
 
         dungeon = self.findChild(DungeonFrame).dungeon
-        matches = get_matching_dungeons(dungeon, self.findChild(SettingsDialog).findChild(QCheckBox).isChecked())
+        matches = get_matching_layouts(dungeon, self.findChild(SettingsDialog).findChild(QCheckBox).isChecked())
 
         self.findChild(MatchesFrame).matches = len(matches)
 
         if len(matches) == 1:
-            dungeon = convert_string_to_dungeon(matches[0])
+            dungeon = convert_string_to_layout(matches[0])
 
             layout: QGridLayout = self.findChild(DungeonFrame).layout()
 

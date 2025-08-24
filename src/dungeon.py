@@ -19,7 +19,7 @@ class DungeonTile:
     id_: int
     rotation: int
 
-type Dungeon = list[list[DungeonTile]]
+type DungeonLayout = list[list[DungeonTile]]
 
 USED_DUNGEON_TILES = [ # Precomputed from DUNGEONS.db
     DungeonTile(0xFFFFFFFF, 0),
@@ -61,12 +61,12 @@ def get_tile_from_hex(tile: str) -> DungeonTile:
 
     return DungeonTile(id_, rotation)
 
-def convert_dungeon_to_string(dungeon: Dungeon) -> str:
+def convert_layout_to_string(dungeon: DungeonLayout) -> str:
     """Convert the dungeon into a hex string for storage"""
 
     return "".join(get_hex_from_tile(dungeon[y][x]) for y in range(15) for x in range(15))
 
-def convert_dungeon_to_regex(dungeon: Dungeon, is_image: bool) -> str:
+def convert_layout_to_regex(dungeon: DungeonLayout, is_image: bool) -> str:
     """Convert the dungeon into a regex string for matching"""
 
     WILDCARDS = {DungeonTile(0xFFFFFFFF, 0)}
@@ -105,11 +105,11 @@ def convert_dungeon_to_regex(dungeon: Dungeon, is_image: bool) -> str:
 
     return regex
 
-def convert_string_to_dungeon(dungeon: str) -> Dungeon:
-    """Convert the hex string into a dungeon"""
+def convert_string_to_layout(dungeon: str) -> DungeonLayout:
+    """Convert the hex string into a dungeon layout"""
 
     if len(dungeon) != (15*15) << 1:
-        raise ValueError(f"Invalid Dungeon String Length ({len(dungeon)})")
+        raise ValueError(f"Invalid DungeonLayout String Length ({len(dungeon)})")
 
     get_idx: Callable[[int, int], int] = lambda x, y : (15*y + x) << 1
 
@@ -126,29 +126,29 @@ def create_database() -> None:
         cursor.execute("CREATE TABLE IF NOT EXISTS dungeons (seed INTEGER PRIMARY KEY, layout TEXT)")
         connection.commit()
 
-def create_dungeon_entry(seed: int, dungeon: str) -> None:
+def create_dungeon_entry(seed: int, layout: str) -> None:
     """Create the entry in the database for the dungeon layout"""
 
     with sqlite3.connect(DATABASE_PATH) as connection:
         cursor = connection.cursor()
-        cursor.execute(f"INSERT OR REPLACE INTO dungeons VALUES ({seed}, {dungeon})")
+        cursor.execute(f"INSERT OR REPLACE INTO dungeons VALUES ({seed}, {layout})")
         connection.commit()
 
-def get_matching_dungeons(dungeon: Dungeon, is_image: bool) -> list[str]:
-    """Get a list of matching dungeon strings"""
+def get_matching_layouts(layout: DungeonLayout, is_image: bool) -> list[str]:
+    """Get a list of matching layout strings"""
 
-    dungeons:  list[str] = []
+    layouts:  list[str] = []
 
     with sqlite3.connect(DATABASE_PATH) as connection:
         connection.create_function("REGEXP", 2, lambda pattern, string : re.search(pattern, string) is not None)
 
         cursor = connection.cursor()
-        cursor.execute(f"SELECT * FROM dungeons WHERE layout REGEXP \"{convert_dungeon_to_regex(dungeon, is_image)}\"")
+        cursor.execute(f"SELECT * FROM dungeons WHERE layout REGEXP \"{convert_layout_to_regex(layout, is_image)}\"")
 
         for _, layout in cursor:
-            dungeons.append(layout)
+            layouts.append(layout)
 
-    return dungeons
+    return layouts
 
 @cache
 def get_tile_image(tile: DungeonTile) -> cv2.typing.MatLike:
@@ -177,7 +177,7 @@ HASHABLE_TILES = [ # Ignoring specific tiles during image recognition
 SCORE_THRESHOLD = 0.90
 
 type ScoredTile = tuple[DungeonTile, float]
-type ScoredDungeon = list[list[ScoredTile]]
+type ScoredLayout = list[list[ScoredTile]]
 
 def get_image_phash(img: cv2.typing.MatLike) -> cv2.typing.MatLike:
     """Calculate the phash of a given image"""
@@ -190,7 +190,7 @@ def get_tile_phash(tile: DungeonTile) -> cv2.typing.MatLike:
 
     return get_image_phash(get_tile_image(tile))
 
-def get_dungeon_from_image(img: cv2.typing.MatLike) -> ScoredDungeon:
+def get_layout_from_image(img: cv2.typing.MatLike) -> ScoredLayout:
     """Get the best fit for every tile in the provided image"""
 
     def get_best_fit_tile(img: cv2.typing.MatLike) -> ScoredTile:
