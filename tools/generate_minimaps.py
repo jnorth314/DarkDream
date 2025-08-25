@@ -81,7 +81,7 @@ def display_dungeon_image(dungeon: DungeonLayout) -> None:
     """Display the dungeon minimap in a new window"""
 
     cv2.imshow(
-        "DungeonLayout Minimap",
+        "Dungeon Minimap",
         cv2.vconcat([cv2.hconcat([get_tile_image(dungeon[y][x]) for x in range(15)]) for y in range(15)])
     )
     cv2.waitKey(0)
@@ -105,7 +105,7 @@ def main() -> None:
 
         cursor.execute("SELECT * FROM dungeons")
 
-        for seed, layout in cursor:
+        for seed, layout, _ in cursor:
             dungeon = convert_string_to_layout(layout)
 
             cv2.imwrite(

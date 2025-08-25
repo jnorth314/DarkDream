@@ -12,7 +12,7 @@ def get_unique_tiles() -> set[DungeonTile]:
 
         cursor.execute("SELECT * FROM dungeons")
 
-        for _, layout in cursor:
+        for _, layout, _ in cursor:
             dungeon = convert_string_to_layout(layout)
 
             for y in range(15):

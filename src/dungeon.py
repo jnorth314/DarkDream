@@ -196,7 +196,7 @@ def get_matching_layouts(layout: DungeonLayout, is_image: bool) -> list[str]:
         cursor = connection.cursor()
         cursor.execute(f"SELECT * FROM dungeons WHERE layout REGEXP \"{convert_layout_to_regex(layout, is_image)}\"")
 
-        for _, layout in cursor:
+        for _, layout, _ in cursor:
             layouts.append(layout)
 
     return layouts

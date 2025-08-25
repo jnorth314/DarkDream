@@ -3,7 +3,10 @@ from typing import Callable
 
 import win32con
 
-from dungeon import convert_layout_to_string, create_database, create_dungeon_entry, DungeonLayout, DungeonTile
+from dungeon import (
+    convert_layout_to_string, create_database, create_dungeon_entry, convert_treasure_to_string, DungeonChest,
+    DungeonLayout, DungeonTile, DungeonTreasure
+)
 from libpcsx2 import PCSX2
 
 # In order to run the script to begin collecting Dungeon layouts, follow these steps:
@@ -37,15 +40,29 @@ def read_dungeon_map(pcsx2: PCSX2) -> DungeonLayout:
 
     DUNGEON_MAP_ADDRESS = 0x01DCE830
 
-    get_idx: Callable[[int, int], int] = lambda x, y : (20*y + x) << 4
+    get_address: Callable[[int, int], int] = lambda x, y : DUNGEON_MAP_ADDRESS + ((20*y + x) << 4)
 
     return [
         [DungeonTile(
-            pcsx2.read_u32(DUNGEON_MAP_ADDRESS + get_idx(x, y)),
-            pcsx2.read_u32(DUNGEON_MAP_ADDRESS + get_idx(x, y) + 4)
+            pcsx2.read_u32(get_address(x, y)),
+            pcsx2.read_u32(get_address(x, y) + 4)
          ) for x in range(15)]
         for y in range(15)
     ]
+
+def read_dungeon_chests(pcsx2: PCSX2) -> DungeonTreasure:
+
+    NUMBER_OF_CHESTS_ADDRESS = 0x01DD0230
+    CHESTS_ADDRESS = 0x01DD0240
+
+    get_address: Callable[[int], int] = lambda i: CHESTS_ADDRESS + (i << 6)
+
+    return [DungeonChest(
+        pcsx2.read_u32(get_address(i) + 0x20),
+        pcsx2.read_u32(get_address(i) + 0x28),
+        pcsx2.read_f32(get_address(i) + 0x10),
+        pcsx2.read_f32(get_address(i) + 0x18)
+    ) for i in range(pcsx2.read_u32(NUMBER_OF_CHESTS_ADDRESS))]
 
 def main() -> None:
     """A script designed to create a database of all 21475 Dark Cloud dungeon layouts"""
@@ -60,7 +77,9 @@ def main() -> None:
         wait_for_generation(pcsx2)
 
         layout = read_dungeon_map(pcsx2)
-        create_dungeon_entry(i, convert_layout_to_string(layout))
+        treasure = read_dungeon_chests(pcsx2)
+
+        create_dungeon_entry(i, convert_layout_to_string(layout), convert_treasure_to_string(treasure))
 
 if __name__ == "__main__":
     main()
