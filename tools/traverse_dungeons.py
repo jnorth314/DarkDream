@@ -1,6 +1,6 @@
 import sqlite3
 
-from dungeon import convert_string_to_dungeon, DATABASE_PATH, DungeonTile
+from dungeon import convert_string_to_layout, DATABASE_PATH, DungeonTile
 
 def get_unique_tiles() -> set[DungeonTile]:
     """Get all tiles from the tilemap being used in practice (USED_DUNGEON_TILES)"""
@@ -13,7 +13,7 @@ def get_unique_tiles() -> set[DungeonTile]:
         cursor.execute("SELECT * FROM dungeons")
 
         for _, layout in cursor:
-            dungeon = convert_string_to_dungeon(layout)
+            dungeon = convert_string_to_layout(layout)
 
             for y in range(15):
                 for x in range(15):

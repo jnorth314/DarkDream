@@ -3,7 +3,9 @@ import sqlite3
 
 import cv2
 
-from dungeon import convert_string_to_dungeon, DATABASE_PATH, Dungeon, DungeonTile, get_tile_image, USED_DUNGEON_TILES
+from dungeon import (
+    convert_string_to_layout, DATABASE_PATH, DungeonLayout, DungeonTile, get_tile_image, USED_DUNGEON_TILES
+)
 
 def get_tile_ascii(tile: DungeonTile) -> str:
     """Return the ASCII equivalent to the tile"""
@@ -64,7 +66,7 @@ def get_tile_ascii(tile: DungeonTile) -> str:
 
     return TILES_TO_ASCII[tile.id_][tile.rotation]
 
-def display_dungeon_map(dungeon: Dungeon) -> None:
+def display_dungeon_map(dungeon: DungeonLayout) -> None:
     """Print the dungeon to the console"""
 
     for y in range(15):
@@ -75,11 +77,11 @@ def display_dungeon_map(dungeon: Dungeon) -> None:
             )
         print()
 
-def display_dungeon_image(dungeon: Dungeon) -> None:
+def display_dungeon_image(dungeon: DungeonLayout) -> None:
     """Display the dungeon minimap in a new window"""
 
     cv2.imshow(
-        "Dungeon Minimap",
+        "DungeonLayout Minimap",
         cv2.vconcat([cv2.hconcat([get_tile_image(dungeon[y][x]) for x in range(15)]) for y in range(15)])
     )
     cv2.waitKey(0)
@@ -104,7 +106,7 @@ def main() -> None:
         cursor.execute("SELECT * FROM dungeons")
 
         for seed, layout in cursor:
-            dungeon = convert_string_to_dungeon(layout)
+            dungeon = convert_string_to_layout(layout)
 
             cv2.imwrite(
                 f"{PATH_TO_SCREENSHOTS}/{seed:04X}.png",

@@ -3,7 +3,7 @@ from typing import Callable
 
 import win32con
 
-from dungeon import convert_dungeon_to_string, create_database, create_dungeon_entry, Dungeon, DungeonTile
+from dungeon import convert_layout_to_string, create_database, create_dungeon_entry, DungeonLayout, DungeonTile
 from libpcsx2 import PCSX2
 
 # In order to run the script to begin collecting Dungeon layouts, follow these steps:
@@ -32,7 +32,7 @@ def wait_for_generation(pcsx2: PCSX2) -> None:
     time.sleep(0.1)
     pcsx2._press_key(win32con.VK_SPACE)
 
-def read_dungeon_map(pcsx2: PCSX2) -> Dungeon:
+def read_dungeon_map(pcsx2: PCSX2) -> DungeonLayout:
     """Return the contents of the dungeon map"""
 
     DUNGEON_MAP_ADDRESS = 0x01DCE830
@@ -54,13 +54,13 @@ def main() -> None:
 
     create_database()
 
-    for i in range(1):
+    for i in range(21475):
         load_state(pcsx2)
         write_seed(pcsx2, i)
         wait_for_generation(pcsx2)
 
-        dungeon = read_dungeon_map(pcsx2)
-        create_dungeon_entry(i, convert_dungeon_to_string(dungeon))
+        layout = read_dungeon_map(pcsx2)
+        create_dungeon_entry(i, convert_layout_to_string(layout))
 
 if __name__ == "__main__":
     main()
