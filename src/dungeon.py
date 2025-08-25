@@ -20,7 +20,7 @@ class DungeonTile:
     id_: int
     rotation: int
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class DungeonChest:
     item: int
     type_: int
