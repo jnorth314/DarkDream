@@ -182,7 +182,7 @@ def create_dungeon_entry(seed: int, layout: str, treasure: str) -> None:
 
     with sqlite3.connect(DATABASE_PATH) as connection:
         cursor = connection.cursor()
-        cursor.execute(f"INSERT OR REPLACE INTO dungeons VALUES ({seed}, {layout}, {treasure})")
+        cursor.execute(f"INSERT OR REPLACE INTO dungeons VALUES ({seed}, '{layout}', '{treasure}')")
         connection.commit()
 
 def get_matching_layouts(layout: DungeonLayout, is_image: bool) -> list[str]:

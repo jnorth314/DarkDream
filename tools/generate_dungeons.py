@@ -51,6 +51,7 @@ def read_dungeon_map(pcsx2: PCSX2) -> DungeonLayout:
     ]
 
 def read_dungeon_chests(pcsx2: PCSX2) -> DungeonTreasure:
+    """Return the contents of all dungeon chests"""
 
     NUMBER_OF_CHESTS_ADDRESS = 0x01DD0230
     CHESTS_ADDRESS = 0x01DD0240
