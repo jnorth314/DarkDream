@@ -3,6 +3,7 @@ from functools import cache
 import os
 import re
 import sqlite3
+import struct
 import sys
 from typing import Callable
 
@@ -19,7 +20,21 @@ class DungeonTile:
     id_: int
     rotation: int
 
+@dataclass
+class DungeonChest:
+    item: int
+    type_: int
+    x: float
+    z: float
+
 type DungeonLayout = list[list[DungeonTile]]
+type DungeonTreasure = list[DungeonChest]
+
+@dataclass
+class Dungeon:
+    seed: int
+    layout: DungeonLayout
+    treasure: DungeonTreasure
 
 USED_DUNGEON_TILES = [ # Precomputed from DUNGEONS.db
     DungeonTile(0xFFFFFFFF, 0),
@@ -49,6 +64,13 @@ def get_hex_from_tile(tile: DungeonTile) -> str:
 
     return f"{tile_as_int:02X}"
 
+def get_hex_from_chest(chest: DungeonChest) -> str:
+    """Convert the chest into a hex string"""
+
+    float_to_int: Callable[[float], int] = lambda n: struct.unpack("<I", struct.pack("<f", n))[0]
+
+    return f"{chest.item:04X}{chest.type_:02X}{float_to_int(chest.x):08X}{float_to_int(chest.z):08X}"
+
 def get_tile_from_hex(tile: str) -> DungeonTile:
     """Convert the hex string into a tile"""
 
@@ -60,6 +82,16 @@ def get_tile_from_hex(tile: str) -> DungeonTile:
         id_, rotation = tile_as_int >> 2, tile_as_int & 0b11
 
     return DungeonTile(id_, rotation)
+
+def get_chest_from_hex(chest: str) -> DungeonChest:
+    """Convert the hex string into a chest"""
+
+    item = int(chest[0:4], 16)
+    type_ = int(chest[4:6], 16)
+    x = struct.unpack("f", bytes.fromhex(chest[6:14]))
+    z = struct.unpack("f", bytes.fromhex(chest[14:22]))
+
+    return DungeonChest(item, type_, x, z)
 
 def convert_layout_to_string(dungeon: DungeonLayout) -> str:
     """Convert the dungeon into a hex string for storage"""
@@ -105,6 +137,11 @@ def convert_layout_to_regex(dungeon: DungeonLayout, is_image: bool) -> str:
 
     return regex
 
+def convert_treasure_to_string(treasure: DungeonTreasure) -> str:
+    """Convert the treasure into a hex string for storage"""
+
+    return "".join(get_hex_from_chest(chest) for chest in treasure)
+
 def convert_string_to_layout(dungeon: str) -> DungeonLayout:
     """Convert the hex string into a dungeon layout"""
 
@@ -114,24 +151,38 @@ def convert_string_to_layout(dungeon: str) -> DungeonLayout:
     get_idx: Callable[[int, int], int] = lambda x, y : (15*y + x) << 1
 
     return [
-        [get_tile_from_hex(dungeon[get_idx(x, y):get_idx(x, y) + 2]) for x in range(15)]
+        [get_tile_from_hex(dungeon[get_idx(x, y):get_idx(x + 1, y)]) for x in range(15)]
         for y in range(15)
     ]
+
+def convert_string_to_treasure(treasure: str) -> DungeonTreasure:
+    """Convert the hex string into a dungeon treasure"""
+
+    NUM_BYTES_PER_CHEST = 11
+
+    if len(treasure) % (NUM_BYTES_PER_CHEST << 1) != 0:
+        raise ValueError(f"Invalid DungeonTreasure String Length ({len(treasure)})")
+
+    num_chests = len(treasure) // (NUM_BYTES_PER_CHEST << 1)
+
+    get_idx: Callable[[int], int] = lambda i: (NUM_BYTES_PER_CHEST << 1)*i
+
+    return [get_chest_from_hex(treasure[get_idx(i):get_idx(i + 1)]) for i in range(num_chests)]
 
 def create_database() -> None:
     """Create the sqlite3 database to hold the dungeon layouts"""
 
     with sqlite3.connect(DATABASE_PATH) as connection:
         cursor = connection.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS dungeons (seed INTEGER PRIMARY KEY, layout TEXT)")
+        cursor.execute("CREATE TABLE IF NOT EXISTS dungeons (seed INTEGER PRIMARY KEY, layout TEXT, treasure TEXT)")
         connection.commit()
 
-def create_dungeon_entry(seed: int, layout: str) -> None:
+def create_dungeon_entry(seed: int, layout: str, treasure: str) -> None:
     """Create the entry in the database for the dungeon layout"""
 
     with sqlite3.connect(DATABASE_PATH) as connection:
         cursor = connection.cursor()
-        cursor.execute(f"INSERT OR REPLACE INTO dungeons VALUES ({seed}, {layout})")
+        cursor.execute(f"INSERT OR REPLACE INTO dungeons VALUES ({seed}, {layout}, {treasure})")
         connection.commit()
 
 def get_matching_layouts(layout: DungeonLayout, is_image: bool) -> list[str]:
