@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import sqlite3
 
@@ -7,6 +8,8 @@ from dungeon import (
     convert_string_to_layout, convert_string_to_treasure, DATABASE_PATH, DungeonLayout, DungeonTile, DungeonTreasure,
     get_tile_image, get_treasure_overlay, USED_DUNGEON_TILES
 )
+
+PATH_TO_SCREENSHOTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/screenshots")
 
 def get_tile_ascii(tile: DungeonTile) -> str:
     """Return the ASCII equivalent to the tile"""
@@ -92,10 +95,15 @@ def get_minimap(layout: DungeonLayout) -> cv2.typing.MatLike:
 
     return cv2.vconcat([cv2.hconcat([get_tile_image(layout[y][x]) for x in range(15)]) for y in range(15)])
 
+def create_dungeon_image(seed: int, layout_as_str: str, treasure_as_str: str) -> None:
+    """Create an image based on the dungeon parameters"""
+
+    layout, treasure = convert_string_to_layout(layout_as_str), convert_string_to_treasure(treasure_as_str)
+    cv2.imwrite(f"{PATH_TO_SCREENSHOTS}/{seed:04X}.png",
+                cv2.add(cv2.cvtColor(get_minimap(layout), cv2.COLOR_BGR2BGRA), get_treasure_overlay(treasure)))
+
 def main() -> None:
     """Generate all screenshots for each dungeon layout"""
-
-    PATH_TO_SCREENSHOTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/screenshots")
 
     if not os.path.exists(PATH_TO_SCREENSHOTS):
         os.mkdir(PATH_TO_SCREENSHOTS)
@@ -111,10 +119,8 @@ def main() -> None:
 
         cursor.execute("SELECT * FROM dungeons")
 
-        for seed, layout_as_str, treasure_as_str in cursor:
-            layout, treasure = convert_string_to_layout(layout_as_str), convert_string_to_treasure(treasure_as_str)
-            cv2.imwrite(f"{PATH_TO_SCREENSHOTS}/{seed:04X}.png",
-                        cv2.add(cv2.cvtColor(get_minimap(layout), cv2.COLOR_BGR2BGRA), get_treasure_overlay(treasure)))
+        with multiprocessing.Pool() as pool:
+            pool.starmap(create_dungeon_image, cursor)
 
 if __name__ == "__main__":
     main()
