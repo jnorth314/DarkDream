@@ -4,7 +4,8 @@ import sqlite3
 import cv2
 
 from dungeon import (
-    convert_string_to_layout, DATABASE_PATH, DungeonLayout, DungeonTile, get_tile_image, USED_DUNGEON_TILES
+    convert_string_to_layout, convert_string_to_treasure, DATABASE_PATH, DungeonLayout, DungeonTile, DungeonTreasure,
+    get_tile_image, get_treasure_overlay, USED_DUNGEON_TILES
 )
 
 def get_tile_ascii(tile: DungeonTile) -> str:
@@ -77,14 +78,19 @@ def display_dungeon_map(dungeon: DungeonLayout) -> None:
             )
         print()
 
-def display_dungeon_image(dungeon: DungeonLayout) -> None:
+def display_dungeon_image(layout: DungeonLayout, treasure: DungeonTreasure) -> None:
     """Display the dungeon minimap in a new window"""
 
     cv2.imshow(
         "Dungeon Minimap",
-        cv2.vconcat([cv2.hconcat([get_tile_image(dungeon[y][x]) for x in range(15)]) for y in range(15)])
+        cv2.add(cv2.cvtColor(get_minimap(layout), cv2.COLOR_BGR2BGRA), get_treasure_overlay(treasure))
     )
     cv2.waitKey(0)
+
+def get_minimap(layout: DungeonLayout) -> cv2.typing.MatLike:
+    """Convert the layout into a minimap image"""
+
+    return cv2.vconcat([cv2.hconcat([get_tile_image(layout[y][x]) for x in range(15)]) for y in range(15)])
 
 def main() -> None:
     """Generate all screenshots for each dungeon layout"""
@@ -105,13 +111,10 @@ def main() -> None:
 
         cursor.execute("SELECT * FROM dungeons")
 
-        for seed, layout, _ in cursor:
-            dungeon = convert_string_to_layout(layout)
-
-            cv2.imwrite(
-                f"{PATH_TO_SCREENSHOTS}/{seed:04X}.png",
-                cv2.vconcat([cv2.hconcat([get_tile_image(dungeon[y][x]) for x in range(15)]) for y in range(15)])
-            )
+        for seed, layout_as_str, treasure_as_str in cursor:
+            layout, treasure = convert_string_to_layout(layout_as_str), convert_string_to_treasure(treasure_as_str)
+            cv2.imwrite(f"{PATH_TO_SCREENSHOTS}/{seed:04X}.png",
+                        cv2.add(cv2.cvtColor(get_minimap(layout), cv2.COLOR_BGR2BGRA), get_treasure_overlay(treasure)))
 
 if __name__ == "__main__":
     main()

@@ -8,6 +8,7 @@ import sys
 from typing import Callable
 
 import cv2
+import numpy
 
 IS_FROZEN = hasattr(sys, "frozen") and hasattr(sys, "_MEIPASS") # For PyInstaller
 BASE_DIRECTORY = sys._MEIPASS if IS_FROZEN else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -105,8 +106,9 @@ def get_chest_from_hex(chest: str) -> DungeonChest:
 
     item = int(chest[0:4], 16)
     type_ = int(chest[4:6], 16)
-    x = struct.unpack("f", bytes.fromhex(chest[6:14]))
-    z = struct.unpack("f", bytes.fromhex(chest[14:22]))
+
+    x = struct.unpack(">f", bytes.fromhex(chest[6:14]))[0]
+    z = struct.unpack(">f", bytes.fromhex(chest[14:22]))[0]
 
     return DungeonChest(item, type_, x, z)
 
@@ -285,3 +287,21 @@ def get_layout_from_image(img: cv2.typing.MatLike) -> ScoredLayout:
         [get_best_fit_tile(img[16*y:16*y + 16, 16*x:16*x + 16]) for x in range(15)]
          for y in range(15)
     ]
+
+def get_treasure_overlay(treasure: DungeonTreasure) -> cv2.typing.MatLike:
+    """Convert the treasure into an overlay for the minimap"""
+
+    OFFSET_X = OFFSET_Y = 8
+
+    img = numpy.zeros((16*15, 16*15, 4), numpy.uint8)
+
+    for chest in treasure:
+        cv2.circle(
+            img,
+            center=(int(chest.x/10) + OFFSET_X, int(chest.z/10) + OFFSET_Y),
+            radius=1,
+            color=(30, 85, 188),
+            thickness=2
+        )
+
+    return img
