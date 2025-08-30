@@ -51,6 +51,23 @@ USED_DUNGEON_TILES = [ # Precomputed from DUNGEONS.db
     DungeonTile(0x2D, 0), DungeonTile(0x2E, 0)
 ]
 
+ITEMS_TO_NAMES = {
+    0x0051: "Fire",            0x0052: "Ice",              0x0053: "Thunder",         0x0054: "Wind",
+    0x0055: "Holy",            0x005B: "Attack+1",         0x005C: "Endurance+1",     0x005D: "Speed+2",
+    0x005E: "Magical power+1", 0x0070: "Undead Buster",    0x0072: "Stone Breaker",   0x0075: "Sky Hunter",
+    0x0087: "Antidote Amulet", 0x0091: "Regular Water",    0x0092: "Tasty Water",     0x0093: "Premium Water",
+    0x0094: "Bread",           0x0095: "Premium Chicken",  0x0096: "Stamina Drink",   0x0097: "Antidote Drink",
+    0x0098: "Holy Water",      0x0099: "Soap",             0x009B: "Cheese",          0x009F: "Bomb",
+    0x00A1: "Fire Gem",        0x00A2: "Ice Gem",          0x00A3: "Thunder Gem",     0x00A4: "Wind Gem",
+    0x00A5: "Holy Gem",        0x00A6: "Throbbing Cherry", 0x00A7: "Gooey Peach",     0x00A8: "Bomb Nuts",
+    0x00A9: "Poisonous Apple", 0x00AA: "Mellow Banana",    0x00AE: "Stand-in Powder", 0x00AF: "Escape Powder",
+    0x00B1: "Repair Powder",   0x00B2: "Powerup Powder",   0x00B5: "Treasure Key",    0x00BA: "Carrot",
+    0x00BB: "Potato cake",     0x00BC: "Minon",            0x00BD: "Battan",          0x00BE: "Petite Fish",
+    0x00C5: "Mimi",            0x00C7: "Prickly",          0x00D8: "Bone Key",        0x00E0: "Tram Oil",
+    0x00E9: "Map",             0x00EA: "Magical Crystal",  0x0103: "Baselard",        0x0104: "Gladius",
+    0x0106: "Crysknife",       0x0109: "Kitchen Knife",    0x010E: "Shamshir",        0x0122: "Bone Rapier"
+}
+
 def get_hex_from_tile(tile: DungeonTile) -> str:
     """Convert the tile into a hex string"""
 
