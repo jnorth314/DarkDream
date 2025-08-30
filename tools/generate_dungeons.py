@@ -53,17 +53,24 @@ def read_dungeon_map(pcsx2: PCSX2) -> DungeonLayout:
 def read_dungeon_chests(pcsx2: PCSX2) -> DungeonTreasure:
     """Return the contents of all dungeon chests"""
 
-    NUMBER_OF_CHESTS_ADDRESS = 0x01DD0230
     CHESTS_ADDRESS = 0x01DD0240
 
     get_address: Callable[[int], int] = lambda i: CHESTS_ADDRESS + (i << 6)
 
-    return [DungeonChest(
-        pcsx2.read_u32(get_address(i) + 0x20),
-        pcsx2.read_u32(get_address(i) + 0x28),
-        pcsx2.read_f32(get_address(i) + 0x10),
-        pcsx2.read_f32(get_address(i) + 0x18)
-    ) for i in range(pcsx2.read_u32(NUMBER_OF_CHESTS_ADDRESS))]
+    chests: DungeonTreasure = []
+
+    i = 0
+    while pcsx2.read_u32(get_address(i) + 0x24) != 0:
+        chests.append(DungeonChest(
+            pcsx2.read_u32(get_address(i) + 0x20),
+            pcsx2.read_u32(get_address(i) + 0x28),
+            pcsx2.read_f32(get_address(i) + 0x10),
+            pcsx2.read_f32(get_address(i) + 0x18)
+        ))
+
+        i += 1
+
+    return chests
 
 def main() -> None:
     """A script designed to create a database of all 21475 Dark Cloud dungeon layouts"""
