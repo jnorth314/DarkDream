@@ -295,13 +295,10 @@ def get_treasure_overlay(treasure: DungeonTreasure) -> cv2.typing.MatLike:
 
     img = numpy.zeros((16*15, 16*15, 4), numpy.uint8)
 
-    for chest in treasure:
-        cv2.circle(
-            img,
-            center=(int(chest.x/10) + OFFSET_X, int(chest.z/10) + OFFSET_Y),
-            radius=1,
-            color=(30, 85, 188),
-            thickness=2
-        )
+    for i, chest in enumerate(treasure, 1):
+        x, y = int(chest.x/10) + OFFSET_X, int(chest.z/10) + OFFSET_Y
+
+        cv2.circle(img, (x, y), 1, (30, 85, 188), thickness=2)
+        cv2.putText(img, str(i), (x - 4, y - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255))
 
     return img
