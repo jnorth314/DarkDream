@@ -220,6 +220,16 @@ def get_matching_layouts(layout: DungeonLayout, is_image: bool) -> list[str]:
 
     return layouts
 
+def get_dungeon_from_layout(layout_as_str: str) -> Dungeon:
+    """Get the dungeon from the matching layout"""
+
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT * FROM dungeons WHERE layout LIKE '{layout_as_str}'")
+        seed, layout, treasure = cursor.fetchone()
+
+    return Dungeon(seed, convert_string_to_layout(layout), convert_string_to_treasure(treasure))
+
 @cache
 def get_tile_image(tile: DungeonTile) -> cv2.typing.MatLike:
     """Get the texture of the tile in the tile sheet"""
@@ -298,7 +308,7 @@ def get_treasure_overlay(treasure: DungeonTreasure) -> cv2.typing.MatLike:
     for i, chest in enumerate(treasure, 1):
         x, y = int(chest.x/10) + OFFSET_X, int(chest.z/10) + OFFSET_Y
 
-        cv2.circle(img, (x, y), 1, (30, 85, 188), thickness=2)
-        cv2.putText(img, str(i), (x - 4, y - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255))
+        cv2.circle(img, (x, y), 1, (30, 85, 188, 255), thickness=2)
+        cv2.putText(img, str(i), (x - 4, y - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255, 255))
 
     return img

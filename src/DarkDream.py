@@ -14,8 +14,8 @@ from PyQt6.QtWidgets import (
 )
 
 from dungeon import (
-    convert_string_to_layout, DungeonLayout, DungeonTile, get_layout_from_image, get_matching_layouts, get_tile_image,
-    USED_DUNGEON_TILES
+    DungeonLayout, DungeonTile, DungeonTreasure, get_dungeon_from_layout, get_layout_from_image, get_matching_layouts,
+    get_tile_image, get_treasure_overlay, USED_DUNGEON_TILES
 )
 
 IS_FROZEN = hasattr(sys, "frozen") and hasattr(sys, "_MEIPASS") # For PyInstaller
@@ -119,7 +119,7 @@ class TileButton(QPushButton):
 
         self.setIcon(get_tile_icon(DungeonTile(0xFFFFFFFF, 0)))
 
-class OverlayLabel(QLabel):
+class CaptureOverlayLabel(QLabel):
     """Overlayed image to display the dungeon on top of the buttons"""
 
     def __init__(self, parent: QWidget | None=None) -> None:
@@ -138,6 +138,29 @@ class OverlayLabel(QLabel):
         img = cv2.resize(img, (16*15, 16*15))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
         img[..., 3] = 127
+
+        height, width, channels = img.shape
+
+        self.setPixmap(QPixmap(QImage(img.tobytes(), width, height, width*channels, QImage.Format.Format_RGBA8888)))
+
+class TreasureOverlayLabel(QLabel):
+    """Overlayed image to display the treasure chests on top of the buttons"""
+
+    def __init__(self, parent: QWidget | None=None) -> None:
+        super().__init__(parent=parent)
+
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setFixedSize(16*15, 16*15)
+        self.hide()
+
+    @property
+    def treasure(self) -> None:
+        raise NotImplementedError
+
+    @treasure.setter
+    def treasure(self, treasure: DungeonTreasure) -> None:
+        img = get_treasure_overlay(treasure)
+        img = cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)
 
         height, width, channels = img.shape
 
@@ -163,7 +186,8 @@ class DungeonFrame(QFrame):
 
         self.setLayout(layout)
 
-        OverlayLabel(self)
+        TreasureOverlayLabel(self)
+        CaptureOverlayLabel(self)
 
     @property
     def dungeon(self) -> DungeonLayout:
@@ -251,12 +275,32 @@ class SettingsDialog(QDialog):
         layout.addWidget(h := QSpinBox(self), 3, 2, 1, 2)
         layout.addWidget(QCheckBox(self), 4, 0, 1, 1)
         layout.addWidget(QLabel("Image Recognition?", self), 4, 1, 1, 3)
+        layout.addWidget(QCheckBox(self), 5, 0, 1, 1)
+        layout.addWidget(QLabel("Treasure Overlay?"), 5, 1, 1, 3)
         self.setLayout(layout)
 
         x.setMaximum(10000)
         y.setMaximum(10000)
         w.setMinimum(1), w.setMaximum(10000)
         h.setMinimum(1), h.setMaximum(10000)
+
+    @property
+    def is_image_recognition(self) -> bool:
+        """Returns whether the setting for image recognition is checked"""
+
+        layout: QGridLayout = self.layout()
+        checkbox: QCheckBox = layout.itemAtPosition(4, 0).widget()
+
+        return checkbox.isChecked()
+
+    @property
+    def TreasureCheckBox(self) -> QCheckBox:
+        """Returns checkbox for the Treasure Overlay setting"""
+
+        layout: QGridLayout = self.layout()
+        checkbox: QCheckBox = layout.itemAtPosition(5, 0).widget()
+
+        return checkbox
 
     @property
     def bounds(self) -> tuple[int, int, int, int]:
@@ -289,6 +333,8 @@ class DungeonCreatorWidget(QWidget):
         tiles.findChild(QButtonGroup).buttonClicked.connect(self.on_tile_select)
         images.findChild(QButtonGroup).buttonClicked.connect(self.on_image_select)
         button.clicked.connect(self.on_reset)
+
+        self.findChild(SettingsDialog).TreasureCheckBox.toggled.connect(self.on_treasure_overlay_toggle)
 
     def on_tile_select(self, button: TileButton) -> None:
         """Callback for when a tile is clicked in the DungeonFrame"""
@@ -328,6 +374,15 @@ class DungeonCreatorWidget(QWidget):
                 button.tile = DungeonTile(0xFFFFFFFF, 0)
 
         self.findChild(MatchesFrame).matches = 21475
+        self.findChild(TreasureOverlayLabel).treasure = []
+
+    def on_treasure_overlay_toggle(self) -> None:
+        """Callback for when the setting for the treasure overlay is toggled"""
+
+        if self.findChild(SettingsDialog).TreasureCheckBox.isChecked():
+            self.findChild(TreasureOverlayLabel).show()
+        else:
+            self.findChild(TreasureOverlayLabel).hide()
 
     def on_image(self, img: cv2.typing.MatLike) -> None:
         """Callback for when the image is captured"""
@@ -338,9 +393,9 @@ class DungeonCreatorWidget(QWidget):
         if (width - x) >= w and (height - y) >= h:
             img = img[y:y + h, x:x + w]
 
-        self.findChild(OverlayLabel).img = img
+        self.findChild(CaptureOverlayLabel).img = img
 
-        if self.findChild(SettingsDialog).findChild(QCheckBox).isChecked():
+        if self.findChild(SettingsDialog).is_image_recognition:
             dungeon = get_layout_from_image(img)
             layout: QGridLayout = self.findChild(DungeonFrame).layout()
 
@@ -363,12 +418,14 @@ class DungeonCreatorWidget(QWidget):
         """Check if the dungeon was a match, if so fill out the rest of the minimap"""
 
         dungeon = self.findChild(DungeonFrame).dungeon
-        matches = get_matching_layouts(dungeon, self.findChild(SettingsDialog).findChild(QCheckBox).isChecked())
+        matches = get_matching_layouts(dungeon, self.findChild(SettingsDialog).is_image_recognition)
 
         self.findChild(MatchesFrame).matches = len(matches)
 
         if len(matches) == 1:
-            dungeon = convert_string_to_layout(matches[0])
+            matching_dungeon = get_dungeon_from_layout(matches[0])
+
+            self.findChild(TreasureOverlayLabel).treasure = matching_dungeon.treasure
 
             layout: QGridLayout = self.findChild(DungeonFrame).layout()
 
@@ -376,7 +433,7 @@ class DungeonCreatorWidget(QWidget):
                 for x in range(15):
                     button: TileButton = layout.itemAtPosition(y, x).widget()
                     button.score = 1.0
-                    button.tile = dungeon[y][x]
+                    button.tile = matching_dungeon.layout[y][x]
 
                     if button.tile == DungeonTile(0xFFFFFFFF, 0):
                         button.force()
@@ -450,7 +507,7 @@ class DarkDream(QMainWindow):
             device = action.device
             worker.open(device.idx, device.resolution[0], device.resolution[1])
             worker.start()
-            self.findChild(OverlayLabel).show()
+            self.findChild(CaptureOverlayLabel).show()
 
     def on_settings(self) -> None:
         """Callback when the settings in the menu bar is selected"""
@@ -460,7 +517,7 @@ class DarkDream(QMainWindow):
     def on_capture_closed(self) -> None:
         """Callback when the capture is closed"""
 
-        self.findChild(OverlayLabel).hide()
+        self.findChild(CaptureOverlayLabel).hide()
 
         action: CaptureAction | None = self.findChild(MenuBar).findChild(QActionGroup).checkedAction()
 
