@@ -1,11 +1,15 @@
+import multiprocessing
 import os
 import sqlite3
 
 import cv2
 
 from dungeon import (
-    convert_string_to_layout, DATABASE_PATH, DungeonLayout, DungeonTile, get_tile_image, USED_DUNGEON_TILES
+    convert_string_to_layout, convert_string_to_treasure, DATABASE_PATH, DungeonLayout, DungeonTile, DungeonTreasure,
+    get_tile_image, get_treasure_overlay, USED_DUNGEON_TILES
 )
+
+PATH_TO_SCREENSHOTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/screenshots")
 
 def get_tile_ascii(tile: DungeonTile) -> str:
     """Return the ASCII equivalent to the tile"""
@@ -77,19 +81,29 @@ def display_dungeon_map(dungeon: DungeonLayout) -> None:
             )
         print()
 
-def display_dungeon_image(dungeon: DungeonLayout) -> None:
+def display_dungeon_image(layout: DungeonLayout, treasure: DungeonTreasure) -> None:
     """Display the dungeon minimap in a new window"""
 
     cv2.imshow(
-        "DungeonLayout Minimap",
-        cv2.vconcat([cv2.hconcat([get_tile_image(dungeon[y][x]) for x in range(15)]) for y in range(15)])
+        "Dungeon Minimap",
+        cv2.add(cv2.cvtColor(get_minimap(layout), cv2.COLOR_BGR2BGRA), get_treasure_overlay(treasure))
     )
     cv2.waitKey(0)
 
+def get_minimap(layout: DungeonLayout) -> cv2.typing.MatLike:
+    """Convert the layout into a minimap image"""
+
+    return cv2.vconcat([cv2.hconcat([get_tile_image(layout[y][x]) for x in range(15)]) for y in range(15)])
+
+def create_dungeon_image(seed: int, layout_as_str: str, treasure_as_str: str) -> None:
+    """Create an image based on the dungeon parameters"""
+
+    layout, treasure = convert_string_to_layout(layout_as_str), convert_string_to_treasure(treasure_as_str)
+    cv2.imwrite(f"{PATH_TO_SCREENSHOTS}/{seed:04X}.png",
+                cv2.add(cv2.cvtColor(get_minimap(layout), cv2.COLOR_BGR2BGRA), get_treasure_overlay(treasure)))
+
 def main() -> None:
     """Generate all screenshots for each dungeon layout"""
-
-    PATH_TO_SCREENSHOTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../res/screenshots")
 
     if not os.path.exists(PATH_TO_SCREENSHOTS):
         os.mkdir(PATH_TO_SCREENSHOTS)
@@ -105,13 +119,8 @@ def main() -> None:
 
         cursor.execute("SELECT * FROM dungeons")
 
-        for seed, layout in cursor:
-            dungeon = convert_string_to_layout(layout)
-
-            cv2.imwrite(
-                f"{PATH_TO_SCREENSHOTS}/{seed:04X}.png",
-                cv2.vconcat([cv2.hconcat([get_tile_image(dungeon[y][x]) for x in range(15)]) for y in range(15)])
-            )
+        with multiprocessing.Pool() as pool:
+            pool.starmap(create_dungeon_image, cursor)
 
 if __name__ == "__main__":
     main()

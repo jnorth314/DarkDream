@@ -3,10 +3,12 @@ from functools import cache
 import os
 import re
 import sqlite3
+import struct
 import sys
 from typing import Callable
 
 import cv2
+import numpy
 
 IS_FROZEN = hasattr(sys, "frozen") and hasattr(sys, "_MEIPASS") # For PyInstaller
 BASE_DIRECTORY = sys._MEIPASS if IS_FROZEN else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -19,7 +21,21 @@ class DungeonTile:
     id_: int
     rotation: int
 
+@dataclass(unsafe_hash=True)
+class DungeonChest:
+    item: int
+    type_: int
+    x: float
+    z: float
+
 type DungeonLayout = list[list[DungeonTile]]
+type DungeonTreasure = list[DungeonChest]
+
+@dataclass
+class Dungeon:
+    seed: int
+    layout: DungeonLayout
+    treasure: DungeonTreasure
 
 USED_DUNGEON_TILES = [ # Precomputed from DUNGEONS.db
     DungeonTile(0xFFFFFFFF, 0),
@@ -36,6 +52,23 @@ USED_DUNGEON_TILES = [ # Precomputed from DUNGEONS.db
     DungeonTile(0x2D, 0), DungeonTile(0x2E, 0)
 ]
 
+ITEMS_TO_NAMES = {
+    0x0051: "Fire",            0x0052: "Ice",              0x0053: "Thunder",         0x0054: "Wind",
+    0x0055: "Holy",            0x005B: "Attack+1",         0x005C: "Endurance+1",     0x005D: "Speed+2",
+    0x005E: "Magical power+1", 0x0070: "Undead Buster",    0x0072: "Stone Breaker",   0x0075: "Sky Hunter",
+    0x0087: "Antidote Amulet", 0x0091: "Regular Water",    0x0092: "Tasty Water",     0x0093: "Premium Water",
+    0x0094: "Bread",           0x0095: "Premium Chicken",  0x0096: "Stamina Drink",   0x0097: "Antidote Drink",
+    0x0098: "Holy Water",      0x0099: "Soap",             0x009B: "Cheese",          0x009F: "Bomb",
+    0x00A1: "Fire Gem",        0x00A2: "Ice Gem",          0x00A3: "Thunder Gem",     0x00A4: "Wind Gem",
+    0x00A5: "Holy Gem",        0x00A6: "Throbbing Cherry", 0x00A7: "Gooey Peach",     0x00A8: "Bomb Nuts",
+    0x00A9: "Poisonous Apple", 0x00AA: "Mellow Banana",    0x00AE: "Stand-in Powder", 0x00AF: "Escape Powder",
+    0x00B1: "Repair Powder",   0x00B2: "Powerup Powder",   0x00B5: "Treasure Key",    0x00BA: "Carrot",
+    0x00BB: "Potato cake",     0x00BC: "Minon",            0x00BD: "Battan",          0x00BE: "Petite Fish",
+    0x00C5: "Mimi",            0x00C7: "Prickly",          0x00D8: "Bone Key",        0x00E0: "Tram Oil",
+    0x00E9: "Map",             0x00EA: "Magical Crystal",  0x0103: "Baselard",        0x0104: "Gladius",
+    0x0106: "Crysknife",       0x0109: "Kitchen Knife",    0x010E: "Shamshir",        0x0122: "Bone Rapier"
+}
+
 def get_hex_from_tile(tile: DungeonTile) -> str:
     """Convert the tile into a hex string"""
 
@@ -49,6 +82,13 @@ def get_hex_from_tile(tile: DungeonTile) -> str:
 
     return f"{tile_as_int:02X}"
 
+def get_hex_from_chest(chest: DungeonChest) -> str:
+    """Convert the chest into a hex string"""
+
+    float_to_int: Callable[[float], int] = lambda n: struct.unpack("<I", struct.pack("<f", n))[0]
+
+    return f"{chest.item:04X}{chest.type_:02X}{float_to_int(chest.x):08X}{float_to_int(chest.z):08X}"
+
 def get_tile_from_hex(tile: str) -> DungeonTile:
     """Convert the hex string into a tile"""
 
@@ -60,6 +100,17 @@ def get_tile_from_hex(tile: str) -> DungeonTile:
         id_, rotation = tile_as_int >> 2, tile_as_int & 0b11
 
     return DungeonTile(id_, rotation)
+
+def get_chest_from_hex(chest: str) -> DungeonChest:
+    """Convert the hex string into a chest"""
+
+    item = int(chest[0:4], 16)
+    type_ = int(chest[4:6], 16)
+
+    x = struct.unpack(">f", bytes.fromhex(chest[6:14]))[0]
+    z = struct.unpack(">f", bytes.fromhex(chest[14:22]))[0]
+
+    return DungeonChest(item, type_, x, z)
 
 def convert_layout_to_string(dungeon: DungeonLayout) -> str:
     """Convert the dungeon into a hex string for storage"""
@@ -105,6 +156,11 @@ def convert_layout_to_regex(dungeon: DungeonLayout, is_image: bool) -> str:
 
     return regex
 
+def convert_treasure_to_string(treasure: DungeonTreasure) -> str:
+    """Convert the treasure into a hex string for storage"""
+
+    return "".join(get_hex_from_chest(chest) for chest in treasure)
+
 def convert_string_to_layout(dungeon: str) -> DungeonLayout:
     """Convert the hex string into a dungeon layout"""
 
@@ -114,24 +170,38 @@ def convert_string_to_layout(dungeon: str) -> DungeonLayout:
     get_idx: Callable[[int, int], int] = lambda x, y : (15*y + x) << 1
 
     return [
-        [get_tile_from_hex(dungeon[get_idx(x, y):get_idx(x, y) + 2]) for x in range(15)]
+        [get_tile_from_hex(dungeon[get_idx(x, y):get_idx(x + 1, y)]) for x in range(15)]
         for y in range(15)
     ]
+
+def convert_string_to_treasure(treasure: str) -> DungeonTreasure:
+    """Convert the hex string into a dungeon treasure"""
+
+    NUM_BYTES_PER_CHEST = 11
+
+    if len(treasure) % (NUM_BYTES_PER_CHEST << 1) != 0:
+        raise ValueError(f"Invalid DungeonTreasure String Length ({len(treasure)})")
+
+    num_chests = len(treasure) // (NUM_BYTES_PER_CHEST << 1)
+
+    get_idx: Callable[[int], int] = lambda i: (NUM_BYTES_PER_CHEST << 1)*i
+
+    return [get_chest_from_hex(treasure[get_idx(i):get_idx(i + 1)]) for i in range(num_chests)]
 
 def create_database() -> None:
     """Create the sqlite3 database to hold the dungeon layouts"""
 
     with sqlite3.connect(DATABASE_PATH) as connection:
         cursor = connection.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS dungeons (seed INTEGER PRIMARY KEY, layout TEXT)")
+        cursor.execute("CREATE TABLE IF NOT EXISTS dungeons (seed INTEGER PRIMARY KEY, layout TEXT, treasure TEXT)")
         connection.commit()
 
-def create_dungeon_entry(seed: int, layout: str) -> None:
+def create_dungeon_entry(seed: int, layout: str, treasure: str) -> None:
     """Create the entry in the database for the dungeon layout"""
 
     with sqlite3.connect(DATABASE_PATH) as connection:
         cursor = connection.cursor()
-        cursor.execute(f"INSERT OR REPLACE INTO dungeons VALUES ({seed}, {layout})")
+        cursor.execute(f"INSERT OR REPLACE INTO dungeons VALUES ({seed}, '{layout}', '{treasure}')")
         connection.commit()
 
 def get_matching_layouts(layout: DungeonLayout, is_image: bool) -> list[str]:
@@ -145,10 +215,20 @@ def get_matching_layouts(layout: DungeonLayout, is_image: bool) -> list[str]:
         cursor = connection.cursor()
         cursor.execute(f"SELECT * FROM dungeons WHERE layout REGEXP \"{convert_layout_to_regex(layout, is_image)}\"")
 
-        for _, layout in cursor:
+        for _, layout, _ in cursor:
             layouts.append(layout)
 
     return layouts
+
+def get_dungeon_from_layout(layout_as_str: str) -> Dungeon:
+    """Get the dungeon from the matching layout"""
+
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT * FROM dungeons WHERE layout LIKE '{layout_as_str}'")
+        seed, layout, treasure = cursor.fetchone()
+
+    return Dungeon(seed, convert_string_to_layout(layout), convert_string_to_treasure(treasure))
 
 @cache
 def get_tile_image(tile: DungeonTile) -> cv2.typing.MatLike:
@@ -217,3 +297,18 @@ def get_layout_from_image(img: cv2.typing.MatLike) -> ScoredLayout:
         [get_best_fit_tile(img[16*y:16*y + 16, 16*x:16*x + 16]) for x in range(15)]
          for y in range(15)
     ]
+
+def get_treasure_overlay(treasure: DungeonTreasure) -> cv2.typing.MatLike:
+    """Convert the treasure into an overlay for the minimap"""
+
+    OFFSET_X = OFFSET_Y = 8
+
+    img = numpy.zeros((16*15, 16*15, 4), numpy.uint8)
+
+    for i, chest in enumerate(treasure, 1):
+        x, y = int(chest.x/10) + OFFSET_X, int(chest.z/10) + OFFSET_Y
+
+        cv2.circle(img, (x, y), 1, (30, 85, 188, 255), thickness=2)
+        cv2.putText(img, str(i), (x - 4, y - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255, 255))
+
+    return img
